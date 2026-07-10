@@ -123,6 +123,9 @@
   }
   .streamer-card:hover{ transform:translateY(-3px); border-color:var(--mc, var(--accent)); }
   .streamer-card.selected{ border-color:var(--mc, var(--accent)); box-shadow:0 0 0 2px var(--mc, var(--accent)) inset; }
+  .streamer-card.insufficient{ opacity:0.55; }
+  .streamer-card.insufficient .avatar{ filter:grayscale(100%); }
+  .streamer-card.insufficient .mascot{ color:var(--danger); }
 
   /* ---------- 문제 수 선택 ---------- */
   .count-grid{ display:flex; flex-wrap:wrap; justify-content:center; gap:14px; margin-bottom:28px; }
@@ -417,7 +420,7 @@
 
         <!-- 싱글플레이 모드: 직접 정답 입력 -->
         <div class="control-row single-answer-row" id="single-answer-row">
-          <input type="text" id="single-answer-input" placeholder="! 없이 정답만 입력하세요" disabled>
+          <input type="text" id="single-answer-input" placeholder="정답을 입력하세요" disabled>
           <button class="btn" id="single-submit-btn" onclick="singleSubmitAnswer()" disabled>제출</button>
         </div>
 
@@ -728,13 +731,15 @@ function renderQuizMemberGrid(){
   const names = [...new Set(FULL_SONG_BANK.map(s=>s.memberName).filter(n=>n && n!=='단체'))];
   names.forEach(name=>{
     const meta = STREAMERS.find(s=>s.name===name);
+    const isInsufficient = INSUFFICIENT_SONG_MEMBERS.includes(name);
     const card = document.createElement('div');
-    card.className = 'streamer-card';
+    card.className = 'streamer-card' + (isInsufficient ? ' insufficient' : '');
     if (meta) card.style.setProperty('--mc', meta.color);
     card.onclick = ()=> chooseQuizMember(name, card);
     card.innerHTML = `
       <div class="avatar">${meta ? avatarHtml(meta) : name[0]}</div>
       <div class="sname">${name}</div>
+      ${isInsufficient ? '<div class="mascot">곡 부족</div>' : ''}
     `;
     grid.appendChild(card);
   });
@@ -1269,16 +1274,22 @@ function startRound(){
   });
 
   // 정해진 구간부터 정답을 제출할 때까지 계속 재생된다 (자동으로 멈추지 않음).
+  // 싱글플레이는 대기 없이 바로 입력 가능하고, 그 외 모드는 방송 딜레이 버퍼용 잠금 구간을 둔다.
+  if (GAME_MODE === 'single'){
+    unlockAnswering();
+  } else {
+    runCountdown(GAME_CONFIG.answerLockSeconds, '음성 재생 중 (답변 잠금)', unlockAnswering);
+  }
+}
 
-  runCountdown(GAME_CONFIG.answerLockSeconds, '음성 재생 중 (답변 잠금)', ()=>{
-    document.getElementById('stage-state').textContent = '';
-    document.getElementById('stage-timer').textContent = '';
-    toggleAnswerInputs(true);
-    currentRoundActive = true; // 노래가 재생 중이어도 여기서부터 시청자 채팅 판정 시작
-    const replayBtn = document.getElementById('replay-btn');
-    if (replayBtn) replayBtn.disabled = replayUsed;
-    writeSessionState({ phase:'awaiting' });
-  });
+function unlockAnswering(){
+  document.getElementById('stage-state').textContent = '';
+  document.getElementById('stage-timer').textContent = '';
+  toggleAnswerInputs(true);
+  currentRoundActive = true; // 노래가 재생 중이어도 여기서부터 시청자 채팅 판정 시작
+  const replayBtn = document.getElementById('replay-btn');
+  if (replayBtn) replayBtn.disabled = replayUsed;
+  writeSessionState({ phase:'awaiting' });
 }
 
 // 한 라운드당 한 번만 다시 들을 수 있음
