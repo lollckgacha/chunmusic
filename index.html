@@ -411,7 +411,6 @@ if (IS_OVERLAY) document.body.classList.add("mode-overlay");
 const GAME_CONFIG = {
   clipSeconds: 10,       // 소리만 재생되는 전체 길이
   answerLockSeconds: 3,  // 재생 시작 후 이 시간 동안은 답변 잠금 (노래는 계속 나오는 중)
-  postAnswerDelay: 3,    // 정답 제출 후 공개까지 대기
 };
 
 const SONGS_RTDB_PATH = "song_quiz/songs";               // 문제 전체 데이터 (컨트롤 패널만 읽음)
@@ -850,8 +849,8 @@ function startRound(){
   setTimeout(()=>{ if(ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo(); }, GAME_CONFIG.clipSeconds*1000);
 
   runCountdown(GAME_CONFIG.answerLockSeconds, '음성 재생 중 (답변 잠금)', ()=>{
-    document.getElementById('stage-state').textContent = '정답을 제출하세요 (노래는 계속 나와요)';
-    document.getElementById('stage-timer').textContent = '✍️';
+    document.getElementById('stage-state').textContent = '';
+    document.getElementById('stage-timer').textContent = '';
     toggleAnswerInputs(true);
     currentRoundActive = true; // 노래가 재생 중이어도 여기서부터 시청자 채팅 판정 시작
     const replayBtn = document.getElementById('replay-btn');
@@ -912,11 +911,7 @@ function singleSubmitAnswer(){
 function finalizeAnswer(){
   currentRoundActive = false;
   toggleAnswerInputs(false);
-  document.getElementById('stage-state').textContent = '정답 공개까지';
-  writeSessionState({ phase:'post_delay', phaseEndAt: serverNow() + GAME_CONFIG.postAnswerDelay*1000, phaseDurationSec: GAME_CONFIG.postAnswerDelay });
-  runCountdown(GAME_CONFIG.postAnswerDelay, '정답 공개까지', ()=>{
-    revealAnswer();
-  });
+  revealAnswer();
 }
 
 function revealAnswer(){
@@ -1027,8 +1022,7 @@ async function initOverlay(){
 
     const labelMap = {
       clip:'음성 재생 중 (답변 잠금)',
-      awaiting:'정답을 제출하세요 (노래는 계속 나와요)',
-      post_delay:'정답 공개까지',
+      awaiting:'',
       reveal:'정답 공개!'
     };
 
@@ -1047,7 +1041,7 @@ async function initOverlay(){
     stateLabel.textContent = labelMap[state.phase] || '진행 중';
 
     if (state.phase === 'awaiting'){
-      timerLabel.textContent = '✍️';
+      timerLabel.textContent = '';
       return;
     }
     if (!currentPhaseEndAt){ timerLabel.textContent = '--'; return; }
