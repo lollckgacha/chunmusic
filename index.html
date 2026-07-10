@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>천타버스 노래 맞히기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gaegu:wght@700&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-0:#0d0b1a;
+    --bg-1:#161326;
+    --bg-2:#1f1b35;
+    --line: rgba(255,255,255,0.08);
+    --ink: #F3EFFF;
+    --ink-dim: #9A93B8;
+    --accent: #FF3D7F;      /* 마젠타 - 진행/강조 */
+    --accent-2: #FFC857;    /* 골드 - 랭킹/정답 */
+    --accent-3: #5EE6C4;    /* 민트 - 보조 상태 */
+    --danger: #FF6A6A;
+    --radius: 18px;
+    --shadow: 0 20px 60px rgba(0,0,0,0.45);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(1200px 700px at 20% -10%, rgba(255,61,127,0.16), transparent 60%),
+      radial-gradient(900px 600px at 100% 10%, rgba(94,230,196,0.10), transparent 55%),
+      var(--bg-0);
+    color:var(--ink);
+    font-family:'Noto Sans KR', sans-serif;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    overflow-x:hidden;
+  }
+  /* ---------- 오버레이 모드: OBS 브라우저 소스용, 배경 투명 ---------- */
+  body.mode-overlay{
+    background:transparent !important;
+    padding:0;
+    align-items:flex-start;
+    justify-content:flex-start;
+  }
+  .display{ font-family:'Black Han Sans', sans-serif; letter-spacing:0.5px; }
+  .screen{ width:100%; max-width:1180px; display:none; }
+  .screen.active{ display:block; animation:fadeUp .5s ease both; }
+  @keyframes fadeUp{ from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:none;} }
+
+  /* ---------- 타이틀 화면 ---------- */
+  #screen-title{ text-align:center; padding:60px 20px; }
+  .title-logo{ max-width:220px; width:60%; height:auto; margin:0 auto 20px; filter:drop-shadow(0 10px 30px rgba(255,61,127,0.35)); }
+  .title-mascots{ display:flex; justify-content:center; gap:10px; margin-bottom:28px; flex-wrap:wrap; }
+  .mascot-dot{
+    width:14px; height:14px; border-radius:50%;
+    box-shadow:0 0 12px currentColor;
+  }
+  h1.game-title{
+    font-size:clamp(42px, 7vw, 84px);
+    margin:0 0 8px;
+    background:linear-gradient(180deg, #fff, var(--accent-2) 90%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow:0 8px 40px rgba(255,61,127,0.35);
+  }
+  .subtitle{ color:var(--ink-dim); font-size:16px; margin-bottom:44px; letter-spacing:2px; }
+  .btn{
+    font-family:'Noto Sans KR', sans-serif;
+    font-weight:700; font-size:17px;
+    border:none; cursor:pointer;
+    padding:16px 40px; border-radius:999px;
+    background:var(--accent); color:#fff;
+    box-shadow:0 10px 30px rgba(255,61,127,0.35);
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .btn:hover{ transform:translateY(-2px); box-shadow:0 14px 36px rgba(255,61,127,0.5); }
+  .btn:active{ transform:translateY(0); }
+  .btn.ghost{
+    background:transparent; color:var(--ink);
+    border:1px solid var(--line); box-shadow:none;
+  }
+  .btn.ghost:hover{ border-color:var(--accent); color:var(--accent); }
+  .btn:disabled{ opacity:.4; cursor:not-allowed; transform:none; }
+
+  /* ---------- 모드 선택 ---------- */
+  .mode-grid{ display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:20px; }
+  @media (max-width:720px){ .mode-grid{ grid-template-columns:1fr; } }
+  .mode-card{
+    background:linear-gradient(160deg, var(--bg-2), var(--bg-1));
+    border:1px solid var(--line); border-radius:var(--radius);
+    padding:36px 28px; text-align:left; cursor:pointer;
+    transition:transform .18s ease, border-color .18s ease;
+    position:relative; overflow:hidden;
+  }
+  .mode-card:hover{ transform:translateY(-4px); border-color:var(--accent); }
+  .mode-card .eyebrow{ color:var(--accent-2); font-size:13px; letter-spacing:2px; font-weight:700; }
+  .mode-card h3{ font-size:28px; margin:8px 0 10px; }
+  .mode-card p{ color:var(--ink-dim); font-size:14px; line-height:1.6; margin:0; }
+  .back-row{ display:flex; justify-content:center; margin-top:28px; }
+
+  /* ---------- 스트리머 선택 ---------- */
+  #screen-streamer h2{ text-align:center; margin-bottom:6px; }
+  .streamer-hint{ text-align:center; color:var(--ink-dim); margin-bottom:30px; font-size:14px;}
+  .streamer-grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(120px,1fr));
+    gap:18px; margin-bottom:28px;
+  }
+  .streamer-card{
+    background:var(--bg-2); border:1px solid var(--line); border-radius:16px;
+    padding:16px 10px 14px; text-align:center; cursor:pointer;
+    transition:transform .15s ease, border-color .15s ease;
+  }
+  .streamer-card:hover{ transform:translateY(-3px); border-color:var(--mc, var(--accent)); }
+  .streamer-card.selected{ border-color:var(--mc, var(--accent)); box-shadow:0 0 0 2px var(--mc, var(--accent)) inset; }
+  .avatar{
+    width:64px; height:64px; border-radius:50%; margin:0 auto 10px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Black Han Sans'; font-size:22px; color:#0d0b1a;
+    background:var(--mc, var(--accent));
+    box-shadow:0 6px 18px rgba(0,0,0,0.4);
+    overflow:hidden;
+  }
+  .avatar img{ width:100%; height:100%; object-fit:cover; }
+  .streamer-card .sname{ font-size:14px; font-weight:700; }
+  .streamer-card .mascot{ font-size:11px; color:var(--ink-dim); margin-top:2px; }
+  .channel-link{ display:block; margin-top:8px; font-size:10.5px; color:var(--mc, var(--accent)); text-decoration:none; }
+  .channel-link:hover{ text-decoration:underline; }
+  .loading-line{ text-align:center; color:var(--accent-3); font-size:14px; min-height:20px; }
+
+  /* ---------- 게임 화면 ---------- */
+  .game-wrap{ display:grid; grid-template-columns:1fr 300px; gap:22px; }
+  @media (max-width:860px){ .game-wrap{ grid-template-columns:1fr; } }
+  .stage{
+    background:#000; border-radius:var(--radius); overflow:hidden; position:relative;
+    aspect-ratio:16/9; box-shadow:var(--shadow); border:1px solid var(--line);
+  }
+  #yt-player{ position:absolute; inset:0; width:100%; height:100%; }
+  .video-cover{
+    position:absolute; inset:0; z-index:5;
+    background:radial-gradient(600px 300px at 50% 40%, rgba(255,61,127,0.10), transparent 60%), #0b0a16;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    transition:opacity .5s ease;
+  }
+  .video-cover.hidden-cover{ opacity:0; pointer-events:none; }
+  .eq{ display:flex; align-items:flex-end; gap:6px; height:70px; margin-bottom:22px; }
+  .eq span{
+    width:8px; border-radius:4px;
+    background:linear-gradient(180deg, var(--accent-2), var(--accent));
+    animation:bounce 1s ease-in-out infinite;
+  }
+  .eq span:nth-child(1){ animation-delay:0s; }
+  .eq span:nth-child(2){ animation-delay:.12s; }
+  .eq span:nth-child(3){ animation-delay:.24s; }
+  .eq span:nth-child(4){ animation-delay:.36s; }
+  .eq span:nth-child(5){ animation-delay:.48s; }
+  .eq span:nth-child(6){ animation-delay:.36s; }
+  .eq span:nth-child(7){ animation-delay:.24s; }
+  .eq span:nth-child(8){ animation-delay:.12s; }
+  @keyframes bounce{ 0%,100%{ height:14px; } 50%{ height:64px; } }
+  .stage-state{ font-family:'Black Han Sans'; font-size:20px; letter-spacing:1px; color:var(--ink); }
+  .stage-timer{ font-family:'Black Han Sans'; font-size:56px; color:var(--accent-2); margin-top:6px; text-shadow:0 4px 20px rgba(255,200,87,0.4); }
+  .reveal-banner{
+    position:absolute; left:0; right:0; bottom:0; z-index:6;
+    padding:16px 20px; background:linear-gradient(0deg, rgba(0,0,0,0.85), transparent);
+    display:flex; align-items:baseline; gap:10px;
+  }
+  .reveal-banner .label{ font-size:12px; color:var(--accent-3); letter-spacing:2px; }
+  .reveal-banner .answer{ font-family:'Black Han Sans'; font-size:26px; color:#fff; }
+
+  .panel{
+    background:var(--bg-2); border:1px solid var(--line); border-radius:var(--radius);
+    padding:18px; display:flex; flex-direction:column; box-shadow:var(--shadow);
+  }
+  .panel h4{ margin:0; font-size:14px; letter-spacing:2px; color:var(--accent-2); }
+  .panel-header{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; cursor:pointer; user-select:none; }
+  .fold-toggle{ font-size:11px; color:var(--ink-dim); transition:transform .15s ease; }
+  .panel.collapsed .panel-header{ margin-bottom:0; }
+  .panel.collapsed .rank-list, .panel.collapsed .empty-note{ display:none !important; }
+  .rank-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; overflow-y:auto; max-height:420px; }
+  .rank-item{
+    display:flex; align-items:center; gap:10px; padding:9px 10px;
+    background:rgba(255,255,255,0.03); border-radius:10px; border:1px solid transparent;
+    font-size:14px;
+  }
+  .rank-item.first{ border-color:var(--accent-2); background:rgba(255,200,87,0.08); }
+  .rank-num{ width:22px; text-align:center; font-family:'Black Han Sans'; color:var(--ink-dim); }
+  .rank-item.first .rank-num{ color:var(--accent-2); }
+  .rank-item.second .rank-num{ color:#d9d9d9; }
+  .rank-item.third .rank-num{ color:#cd8a4d; }
+  .rank-name{ flex:1; }
+  .rank-time{ font-size:11px; color:var(--ink-dim); }
+  .empty-note{ color:var(--ink-dim); font-size:13px; text-align:center; padding:20px 0; }
+
+  .control-panel{ margin-top:18px; }
+  .control-row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .control-row input[type=text]{
+    flex:1; min-width:160px; background:var(--bg-1); border:1px solid var(--line);
+    color:var(--ink); padding:12px 14px; border-radius:10px; font-size:15px;
+  }
+  .song-meta{ display:flex; justify-content:space-between; color:var(--ink-dim); font-size:13px; margin-bottom:14px; }
+  .streamer-badge{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink-dim); margin-bottom:14px; }
+  .badge-dot{ width:10px; height:10px; border-radius:50%; background:var(--mc, var(--accent)); }
+  .top-bar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+  .top-bar .brand{ font-family:'Black Han Sans'; font-size:22px; }
+  .chip{ font-size:12px; padding:4px 10px; border-radius:999px; background:rgba(255,61,127,0.15); color:var(--accent); border:1px solid rgba(255,61,127,0.3); }
+  .single-answer-row{ display:none; }
+  .single-answer-row.active{ display:flex; }
+  .feedback{ margin-top:10px; font-size:14px; min-height:20px; }
+  .feedback.correct{ color:var(--accent-3); }
+  .feedback.wrong{ color:var(--danger); }
+  .footnote{ margin-top:14px; font-size:11.5px; color:var(--ink-dim); line-height:1.6; }
+
+  /* ---------- 오버레이 전용 화면 ---------- */
+  #screen-overlay{ max-width:520px; }
+  #screen-overlay .stage{ box-shadow:none; border:none; background:transparent; }
+  #screen-overlay .video-cover{ background:radial-gradient(600px 300px at 50% 40%, rgba(255,61,127,0.14), transparent 60%), rgba(11,10,22,0.72); border-radius:var(--radius); }
+  #screen-overlay .panel{ margin-top:14px; box-shadow:none; background:rgba(31,27,53,0.82); backdrop-filter:blur(6px); }
+  #screen-overlay .rank-list{ max-height:260px; }
+</style>
+</head>
+<body>
+
+<!-- ============ 1. 타이틀 화면 ============ -->
+<div class="screen active" id="screen-title">
+  <img class="title-logo" src="images/logo.png" alt="천타버스" onerror="this.style.display='none'">
+  <div class="title-mascots" id="title-mascots"></div>
+  <h1 class="game-title">천타버스 노래 맞히기</h1>
+  <div class="subtitle">LISTEN &nbsp;·&nbsp; GUESS &nbsp;·&nbsp; WIN</div>
+  <button class="btn" onclick="goScreen('mode')">시작하기</button>
+</div>
+
+<!-- ============ 2. 모드 선택 ============ -->
+<div class="screen" id="screen-mode">
+  <h2 class="display" style="text-align:center;">모드를 선택하세요</h2>
+  <div class="mode-grid">
+    <div class="mode-card" onclick="startSingle()">
+      <div class="eyebrow">SOLO</div>
+      <h3>싱글플레이</h3>
+      <p>혼자 문제를 듣고 직접 정답을 입력해서 맞혀보세요. 연습이나 개인 플레이에 적합해요.</p>
+    </div>
+    <div class="mode-card" onclick="goScreen('streamer')">
+      <div class="eyebrow">LIVE</div>
+      <h3>스트리밍 모드</h3>
+      <p>스트리머를 선택하면 실제 방송 채팅을 불러와 시청자들과 함께 실시간으로 맞힙니다.</p>
+    </div>
+  </div>
+  <div class="back-row"><button class="btn ghost" onclick="goScreen('title')">← 뒤로</button></div>
+</div>
+
+<!-- ============ 3. 스트리머 선택 ============ -->
+<div class="screen" id="screen-streamer">
+  <h2 class="display" style="text-align:center;">스트리머 선택</h2>
+  <div class="streamer-hint">선택한 스트리머의 방송 채팅을 불러와 시청자 정답을 함께 집계합니다</div>
+  <div class="streamer-grid" id="streamer-grid"></div>
+  <div class="loading-line" id="streamer-loading"></div>
+  <div class="back-row"><button class="btn ghost" onclick="goScreen('mode')">← 뒤로</button></div>
+</div>
+
+<!-- ============ 4. 게임 화면 (컨트롤 패널) ============ -->
+<div class="screen" id="screen-game">
+  <div class="top-bar">
+    <div class="brand">천타버스 노래 맞히기</div>
+    <div id="mode-chip" class="chip">SOLO</div>
+  </div>
+
+  <div class="game-wrap">
+    <!-- 좌측: 무대 + 컨트롤 패널 -->
+    <div>
+      <div class="stage">
+        <div id="yt-player"></div>
+        <div class="video-cover" id="video-cover">
+          <div class="eq"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          <div class="stage-state" id="stage-state">재생 대기 중</div>
+          <div class="stage-timer" id="stage-timer">--</div>
+        </div>
+        <div class="reveal-banner" id="reveal-banner" style="display:none;">
+          <div class="label">정답</div>
+          <div class="answer" id="reveal-answer-text">-</div>
+        </div>
+      </div>
+
+      <div class="panel control-panel">
+        <div class="song-meta"><span id="round-index">문제 0 / 0</span><span id="song-category">-</span></div>
+        <div class="streamer-badge" id="streamer-badge-row" style="display:none;">
+          <span class="badge-dot"></span><span id="streamer-badge-name">-</span>
+          <a id="streamer-badge-link" href="#" target="_blank" rel="noopener" style="margin-left:auto; font-size:12px; color:var(--accent-3);">채널 바로가기 ↗</a>
+        </div>
+
+        <div class="control-row" id="volume-row">
+          <label for="volume-slider" style="font-size:13px; color:var(--ink-dim); white-space:nowrap;">🔊 음량</label>
+          <input type="range" id="volume-slider" min="0" max="100" value="100" style="flex:1;">
+          <span id="volume-value" style="font-size:12px; color:var(--ink-dim); width:36px; text-align:right;">100%</span>
+        </div>
+
+        <!-- 스트리밍 모드: 스트리머 정답 제출 -->
+        <div class="control-row" id="streamer-submit-row">
+          <input type="text" id="streamer-answer-input" placeholder="정답 입력 후 제출 (예: 애국가)" disabled>
+          <button class="btn" id="submit-answer-btn" onclick="streamerSubmitAnswer()" disabled>정답 제출</button>
+        </div>
+
+        <!-- 싱글플레이 모드: 직접 정답 입력 -->
+        <div class="control-row single-answer-row" id="single-answer-row">
+          <input type="text" id="single-answer-input" placeholder="! 없이 정답만 입력하세요" disabled>
+          <button class="btn" id="single-submit-btn" onclick="singleSubmitAnswer()" disabled>제출</button>
+        </div>
+
+        <div class="feedback" id="feedback-line"></div>
+
+        <div class="control-row" style="margin-top:14px;">
+          <button class="btn ghost" id="start-round-btn" onclick="startRound()">▶ 문제 재생</button>
+          <button class="btn ghost" id="next-round-btn" onclick="nextRound()" disabled>다음 곡 →</button>
+        </div>
+        <div class="footnote" id="footnote-text">
+          채팅 연동: 현재는 데모용 가상 채팅(ChatSource: demo)으로 동작 중입니다.
+        </div>
+      </div>
+    </div>
+
+    <!-- 우측: 정답자 랭킹 -->
+    <div>
+      <div class="panel" id="rank-panel">
+        <div class="panel-header" onclick="togglePanelCollapse('rank')">
+          <h4>정답자 랭킹 (이번 문제)</h4>
+          <span class="fold-toggle" id="rank-fold-icon">▲</span>
+        </div>
+        <ul class="rank-list" id="rank-list"></ul>
+        <div class="empty-note" id="rank-empty">아직 정답자가 없습니다</div>
+      </div>
+      <div class="panel" id="total-panel" style="margin-top:16px; display:none;">
+        <div class="panel-header" onclick="togglePanelCollapse('total')">
+          <h4>종합 순위 (전체 세션)</h4>
+          <span class="fold-toggle" id="total-fold-icon">▲</span>
+        </div>
+        <ul class="rank-list" id="total-list"></ul>
+        <div class="empty-note" id="total-empty">아직 집계된 점수가 없습니다</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 5. OBS 오버레이 전용 화면 (?overlay&streamer=<id>) ============ -->
+<div class="screen" id="screen-overlay">
+  <div class="stage">
+    <div id="yt-player-overlay"></div>
+    <div class="video-cover" id="overlay-video-cover">
+      <div class="eq"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+      <div class="stage-state" id="overlay-stage-state">대기 중</div>
+      <div class="stage-timer" id="overlay-stage-timer">--</div>
+    </div>
+    <div class="reveal-banner" id="overlay-reveal-banner" style="display:none;">
+      <div class="label">정답</div>
+      <div class="answer" id="overlay-reveal-answer-text">-</div>
+    </div>
+  </div>
+  <div class="panel" id="overlay-rank-panel">
+    <div class="panel-header">
+      <h4>정답자 랭킹 (이번 문제)</h4>
+    </div>
+    <ul class="rank-list" id="overlay-rank-list"></ul>
+    <div class="empty-note" id="overlay-rank-empty">아직 정답자가 없습니다</div>
+  </div>
+  <div class="panel" id="overlay-total-panel" style="margin-top:10px;">
+    <div class="panel-header">
+      <h4>종합 순위 (전체 세션)</h4>
+    </div>
+    <ul class="rank-list" id="overlay-total-list"></ul>
+    <div class="empty-note" id="overlay-total-empty">아직 집계된 점수가 없습니다</div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+<script>
+/* =========================================================
+   0. Firebase 초기화 & URL 파라미터
+   -- FM26(dongpa2026-2fda5) 프로젝트와 완전히 동일한 RTDB 인스턴스를 그대로 재사용한다.
+      (goal/index.html — FC26 벽골내기 스코어보드 — 와 같은 databaseURL/secret)
+      새 프로젝트(chunta-d80c5)에 RTDB를 새로 만들 필요 없이 바로 연동 가능.
+      클라이언트는 오직 RTDB만 읽고/쓴다. Google Sheets는 apps-script-songlist.gs.txt 의
+      "노래 목록을 사이트로 보내기" 메뉴를 눌러야 song_quiz/songs 경로에 반영된다 (실시간 폴링 아님).
+   -- FM26 쪽 코드처럼 databaseURL 하나만 넘기면 충분하다 (RTDB는 apiKey 없이도 접근 가능).
+========================================================= */
+const firebaseConfig = {
+  databaseURL: "https://dongpa2026-2fda5-default-rtdb.asia-southeast1.firebasedatabase.app/"
+};
+if (!firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+const db = firebase.database();
+
+// 서버 시계와의 오차 보정 (컨트롤 패널과 오버레이의 카운트다운을 초 단위로 일치시키기 위함)
+let serverTimeOffsetMs = 0;
+db.ref(".info/serverTimeOffset").on("value", function(snap){ serverTimeOffsetMs = snap.val() || 0; });
+function serverNow(){ return Date.now() + serverTimeOffsetMs; }
+
+const params = new URLSearchParams(window.location.search);
+const IS_OVERLAY = params.has("overlay");
+const OVERLAY_STREAMER_ID = params.get("streamer") || "";
+if (IS_OVERLAY) document.body.classList.add("mode-overlay");
+
+/* =========================================================
+   1. 게임 설정 (시트에 넣지 않는 값들)
+========================================================= */
+const GAME_CONFIG = {
+  clipSeconds: 10,      // 소리만 재생되는 시간
+  preAnswerDelay: 3,    // 재생 종료 후 스트리머 입력 가능까지 대기 (방송 딜레이 버퍼)
+  postAnswerDelay: 3,   // 정답 제출 후 공개까지 대기
+};
+
+const SONGS_RTDB_PATH = "song_quiz/songs";               // 문제 전체 데이터 (컨트롤 패널만 읽음)
+function sessionPath(streamerId){ return "song_quiz/sessions/" + streamerId; }
+function statePath(streamerId){ return sessionPath(streamerId) + "/state"; }
+function rankPath(streamerId){ return sessionPath(streamerId) + "/rank"; }
+function totalsPath(streamerId){ return sessionPath(streamerId) + "/totals"; }
+const LOG_QUEUE_RTDB_PATH = "song_quiz/logs_queue";
+
+// 정답 순서별 점수 (quizbubble류 실시간 퀴즈의 "세션 누적 점수판"을 흉내낸 것).
+// 1등/2등/3등은 더 큰 점수, 4등부터는 참여 보상으로 낮은 고정 점수를 준다.
+const POINTS_BY_RANK = [100, 80, 60];
+const POINTS_DEFAULT = 50;
+function pointsForRankIndex(idx){ return idx < POINTS_BY_RANK.length ? POINTS_BY_RANK[idx] : POINTS_DEFAULT; }
+
+// 데모 폴백용 문제 데이터. Sheets 연동이 안 되어 있거나 song_quiz/songs 가 비어있을 때만 사용된다.
+const FALLBACK_SONGS = [
+  { id:1, title:"애국가", videoId:"_Rd_A7haE1o", startSec:60, category:"응원/국가", aliases:["애국가","대한민국애국가"] },
+  { id:2, title:"학교종", videoId:"_Rd_A7haE1o", startSec:60, category:"동요", aliases:["학교종","학교종이땡땡땡"] },
+  { id:3, title:"곰세마리", videoId:"_Rd_A7haE1o", startSec:60, category:"동요", aliases:["곰세마리","곰세마리가한집에있어"] },
+];
+
+let SONGS = [];
+
+// song_quiz/songs 는 정답 목록(aliases)이 포함된 "전체 문제 은행"이라 컨트롤 패널(스트리머)만 읽는다.
+// 오버레이/뷰어 쪽은 세션 state 에 실린 "현재 라운드" 정보만 받으므로 미래 문제의 정답을 미리 볼 수 없다.
+// (Auth를 쓰지 않는 순수 클라이언트 구조라 완전한 차단은 불가능 — RTDB 보안 규칙으로 song_quiz/songs 경로를
+//  컨트롤 패널만 읽도록 제한하는 것을 권장. 아래는 참고용 규칙 예시:
+//  { "rules": { "song_quiz": { "songs": { ".read": "auth != null || query.orderByChild == 'id'" } } } }
+//  Auth를 쓰지 않기로 했으므로 실질적으로는 "URL을 아는 사람만 접근"하는 수준의 완화책임을 감안할 것.)
+function withTimeout(promise, ms){
+  return Promise.race([
+    promise,
+    new Promise((_, reject)=> setTimeout(()=> reject(new Error('timeout after '+ms+'ms')), ms))
+  ]);
+}
+
+async function loadSongs(){
+  try{
+    const snap = await withTimeout(db.ref(SONGS_RTDB_PATH).once("value"), 4000);
+    const data = snap.val();
+    if (data && Array.isArray(data.list) && data.list.length > 0){
+      SONGS = data.list;
+      return;
+    }
+  }catch(e){
+    console.error("song_quiz/songs 로드 실패(또는 시간 초과), 데모 데이터 사용", e);
+  }
+  SONGS = FALLBACK_SONGS;
+}
+
+/* =========================================================
+   2. 화면 전환
+========================================================= */
+function goScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+}
+
+// 데모용 스트리머(크루) 목록 - 실제 이미지가 있으면 avatarImg 경로에 파일을 넣으면 자동 로드되고,
+// 없으면 이니셜 원형 아바타로 폴백한다.
+// id/color/avatarImg/bjId는 천타버스 코인 거래소(chuntacoin) 프로젝트의 STREAMER_LIST를 그대로 따온 것 —
+// 두 프로젝트가 같은 Firebase 프로젝트(chunta-d80c5)를 공유하므로 streamerId를 반드시 일치시켜야
+// 나중에 코인 거래소 쪽 채팅 수집 인프라를 그대로 재사용할 수 있다.
+const STREAMERS = [
+  { id:"chunyang",  name:"천양",   mascot:"양이",   color:"#18D7F2", avatarImg:"images/01.png", bjId:"243000",      channelUrl:"https://ch.sooplive.co.kr/243000" },
+  { id:"madaom",    name:"마다옴", mascot:"다옴이", color:"#FFD84D", avatarImg:"images/02.png", bjId:"madaomm",     channelUrl:"https://ch.sooplive.co.kr/madaomm" },
+  { id:"nanamoon",  name:"나나문", mascot:"나문이", color:"#F4F6FF", avatarImg:"images/03.png", bjId:"nanamoon777", channelUrl:"https://ch.sooplive.co.kr/nanamoon777" },
+  { id:"imhaming",  name:"임하밍", mascot:"하미",   color:"#E88CFF", avatarImg:"images/04.png", bjId:"imha22",      channelUrl:"https://ch.sooplive.co.kr/imha22" },
+  { id:"moonmomo",  name:"문모모", mascot:"모모",   color:"#8E57E8", avatarImg:"images/05.png", bjId:"doormomo",    channelUrl:"https://ch.sooplive.co.kr/doormomo" },
+  { id:"chebi",     name:"체비",   mascot:"체비몽", color:"#98A3B3", avatarImg:"images/06.png", bjId:"chebi2",      channelUrl:"https://ch.sooplive.co.kr/chebi2" },
+  { id:"kapu",      name:"카푸",   mascot:"카푸치", color:"#c29b96", avatarImg:"images/07.png", bjId:"kappuchan",   channelUrl:"https://ch.sooplive.co.kr/kappuchan" },
+  { id:"kyaang",    name:"캬앙",   mascot:"캬옹이", color:"#F25555", avatarImg:"images/08.png", bjId:"kyaang123",   channelUrl:"https://ch.sooplive.co.kr/kyaang123" },
+  { id:"kimwello",  name:"김웰로", mascot:"웰로",   color:"#79D85A", avatarImg:"images/09.png", bjId:"wellro314",   channelUrl:"https://ch.sooplive.co.kr/wellro314" },
+  { id:"moca",      name:"모카",   mascot:"모카콩", color:"#3E73FF", avatarImg:"images/10.png", bjId:"mocamu2",     channelUrl:"https://ch.sooplive.co.kr/mocamu2" },
+  { id:"dalta",     name:"달타",   mascot:"달이",   color:"#E88920", avatarImg:"images/11.png", bjId:"dalta20",     channelUrl:"https://ch.sooplive.co.kr/dalta20" },
+  { id:"plli",      name:"플리",   mascot:"플리비", color:"#b8e1f5", avatarImg:"images/12.png", bjId:"plincess",    channelUrl:"https://ch.sooplive.co.kr/plincess" },
+];
+function findStreamer(id){ return STREAMERS.find(s=>s.id===id) || null; }
+
+// 타이틀 화면 상단 점 장식 (크루 컬러)
+(function renderTitleMascots(){
+  const wrap = document.getElementById('title-mascots');
+  if (!wrap) return;
+  STREAMERS.forEach(s=>{
+    const d = document.createElement('div');
+    d.className='mascot-dot';
+    d.style.color = s.color;
+    d.style.background = s.color;
+    wrap.appendChild(d);
+  });
+})();
+
+/* =========================================================
+   3. 모드 시작
+========================================================= */
+let GAME_MODE = 'single'; // 'single' | 'streaming'
+let selectedStreamer = null;
+
+async function startSingle(){
+  GAME_MODE = 'single';
+  document.getElementById('mode-chip').textContent = 'SOLO';
+  document.getElementById('streamer-submit-row').style.display='none';
+  document.getElementById('single-answer-row').classList.add('active');
+  document.getElementById('streamer-badge-row').style.display='none';
+  document.getElementById('total-panel').style.display='none';
+  await loadSongs();
+  goScreen('game');
+  initGame();
+}
+
+function avatarHtml(s){
+  if (s.avatarImg){
+    return `<img src="${s.avatarImg}" alt="${s.name}" onerror="this.parentElement.textContent='${s.name[0]}'">`;
+  }
+  return s.name[0];
+}
+
+// 스트리머 선택 그리드 렌더
+(function renderStreamerGrid(){
+  const grid = document.getElementById('streamer-grid');
+  if (!grid) return;
+  STREAMERS.forEach(s=>{
+    const card = document.createElement('div');
+    card.className='streamer-card';
+    card.style.setProperty('--mc', s.color);
+    card.onclick = ()=> selectStreamer(s, card);
+    card.innerHTML = `
+      <div class="avatar">${avatarHtml(s)}</div>
+      <div class="sname">${s.name}</div>
+      <div class="mascot">${s.mascot}</div>
+      ${s.channelUrl ? `<a class="channel-link" href="${s.channelUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">방송 바로가기 ↗</a>` : ''}
+    `;
+    grid.appendChild(card);
+  });
+})();
+
+async function selectStreamer(streamer, cardEl){
+  document.querySelectorAll('.streamer-card').forEach(c=>c.classList.remove('selected'));
+  cardEl.classList.add('selected');
+  selectedStreamer = streamer;
+  const loading = document.getElementById('streamer-loading');
+  loading.textContent = `${streamer.name}님의 방송 채팅 데이터를 불러오는 중...`;
+  setTimeout(async ()=>{
+    loading.textContent = `연결 완료! (${streamer.name} 채팅 수신 중)`;
+    await loadSongs();
+    setTimeout(()=>{
+      GAME_MODE = 'streaming';
+      document.getElementById('mode-chip').textContent = 'LIVE · ' + streamer.name;
+      document.getElementById('streamer-submit-row').style.display='flex';
+      document.getElementById('single-answer-row').classList.remove('active');
+      const badgeRow = document.getElementById('streamer-badge-row');
+      badgeRow.style.display='flex';
+      badgeRow.style.setProperty('--mc', streamer.color);
+      document.getElementById('streamer-badge-name').textContent = streamer.name + ' 방송 채팅 연동 중';
+      document.getElementById('streamer-badge-link').href = streamer.channelUrl || '#';
+
+      // 새 스트리밍 세션 시작 - 이 스트리머의 세션 누적 점수판을 초기화한다.
+      totalScores = {};
+      renderTotals([], 'total-list', 'total-empty');
+      document.getElementById('total-panel').style.display='flex';
+      db.ref(totalsPath(streamer.id)).set(null);
+
+      // 닉네임 패널 접힘 상태도 새 세션 기준으로 초기화(펼침)한다.
+      panelCollapsed.rank = false;
+      panelCollapsed.total = false;
+      applyPanelCollapse('rank', false);
+      applyPanelCollapse('total', false);
+      writeSessionState({ rankCollapsed:false, totalCollapsed:false });
+
+      goScreen('game');
+      initGame();
+      startChatSource();
+    }, 500);
+  }, 900);
+}
+
+/* =========================================================
+   4. 채팅 소스 추상화
+   -- DemoChatSource: 가상 채팅 발생기 (문제 데이터/RTDB 연동 확인용)
+   -- FirebaseRelayChatSource: 천타버스 코인 거래소 쪽에서 이미 수집 중인 채팅을
+      Firebase RTDB 경로(CHAT_RELAY_PATH)에 push 하고 있다는 가정하에 그 경로를 구독한다.
+      ⚠ 실제 경로/필드명이 다르면 CHAT_RELAY_PATH 와 normalizeRelayMessage() 만 맞게 고치면 된다.
+========================================================= */
+let chatSource = null;
+let onChatMessageHandler = null;
+
+class DemoChatSource{
+  constructor(){ this.timer=null; this.names=["댕댕이팬","콩콩이","야옹러버","천타초심","방송러버1","익명의시청자","닉네임123","콩순이","랜더스팬"]; }
+  start(onMessage){
+    onChatMessageHandler = onMessage;
+    this.timer = setInterval(()=>{
+      if(!currentRoundActive) return;
+      const user = { id: 'u'+Math.floor(Math.random()*9999), nickname: this.names[Math.floor(Math.random()*this.names.length)] };
+      const song = SONGS[currentSongIndex];
+      if(!song) return;
+      const guessPool = [...song.aliases, "오답입니다", "몰라요", song.aliases[0].slice(0,1)];
+      const text = "!" + guessPool[Math.floor(Math.random()*guessPool.length)];
+      onMessage(user, text);
+    }, 650);
+  }
+  stop(){ clearInterval(this.timer); }
+}
+
+// TODO: "천타버스 코인 거래소" 채팅 수집 파이프라인의 실제 RTDB 경로/필드명으로 교체.
+// 가정: {streamerId}/messages 아래에 push()로 { userId, nickname, text, ts } 형태가 쌓인다.
+class FirebaseRelayChatSource{
+  constructor(streamerId){
+    this.streamerId = streamerId;
+    this.ref = db.ref("chat_relay/" + streamerId + "/messages");
+    this.startedAtKey = null;
+  }
+  start(onMessage){
+    onChatMessageHandler = onMessage;
+    // 재연결 시 과거 채팅을 다시 재생하지 않도록, 구독 시작 이후에 추가된 메시지만 받는다.
+    this.ref.limitToLast(1).once("value", (snap)=>{
+      let lastKey = null;
+      snap.forEach(child => { lastKey = child.key; });
+      this.startedAtKey = lastKey;
+      this._attach(onMessage);
+    });
+  }
+  _attach(onMessage){
+    this.listener = (snap)=>{
+      if (this._skippedInitial !== true){ this._skippedInitial = true; return; } // child_added 첫 콜백(=마지막 기존 메시지) 무시
+      const raw = snap.val();
+      if (!raw) return;
+      const user = { id: raw.userId || raw.uid || raw.id, nickname: raw.nickname || raw.nick || '익명' };
+      onMessage(user, raw.text || raw.message || '');
+    };
+    const query = this.startedAtKey ? this.ref.orderByKey().startAfter(this.startedAtKey) : this.ref;
+    query.on("child_added", this.listener);
+    this._query = query;
+  }
+  stop(){ if (this._query && this.listener) this._query.off("child_added", this.listener); }
+}
+
+function startChatSource(){
+  if(chatSource) chatSource.stop();
+  // 실연동 준비되면 아래 줄을 FirebaseRelayChatSource로 교체:
+  // chatSource = new FirebaseRelayChatSource(selectedStreamer.id);
+  chatSource = new DemoChatSource();
+  chatSource.start(handleIncomingChat);
+}
+
+/* =========================================================
+   5. 정답 판정 로직 ("!" 접두사, 첫 정답만 인정)
+========================================================= */
+let answeredUsers = new Set();
+let rankEntries = []; // {nickname, time}
+let currentRoundActive = false;
+let roundStartTime = 0;
+let totalScores = {}; // userId -> {nickname, score, correctCount} - 세션 전체 누적 (라운드마다 초기화되지 않음)
+
+/* ---- 정답자 닉네임 패널 접기 기능 (시청자 친목/네임드화 방지용) ----
+   컨트롤 패널에서 접으면 스트리머 화면과 오버레이(방송 송출 화면) 양쪽 모두에서 닉네임이 숨겨진다. */
+const panelCollapsed = { rank:false, total:false };
+
+function applyPanelCollapse(key, collapsed, opts){
+  opts = opts || {};
+  const panelEl = document.getElementById(opts.panelId || (key + '-panel'));
+  if (panelEl) panelEl.classList.toggle('collapsed', !!collapsed);
+  const iconEl = document.getElementById(opts.iconId || (key + '-fold-icon'));
+  if (iconEl) iconEl.textContent = collapsed ? '▼' : '▲';
+}
+
+function togglePanelCollapse(key){
+  panelCollapsed[key] = !panelCollapsed[key];
+  applyPanelCollapse(key, panelCollapsed[key]);
+  writeSessionState({ [key + 'Collapsed']: panelCollapsed[key] });
+}
+
+function normalize(str){
+  return str.replace(/\s+/g,'').replace(/[^\p{L}\p{N}]/gu,'').toLowerCase();
+}
+
+function handleIncomingChat(user, text){
+  if(!text.startsWith('!')) return;               // "!" 없는 채팅은 수집하지 않음
+  if(answeredUsers.has(user.id)) return;           // 이미 답한 유저는 무시(첫 채팅만 인정)
+  answeredUsers.add(user.id);
+
+  const guess = normalize(text.slice(1));
+  const song = SONGS[currentSongIndex];
+  if(!song) return;
+  const isCorrect = song.aliases.some(a => normalize(a) === guess);
+
+  if(isCorrect){
+    const points = pointsForRankIndex(rankEntries.length);
+    const entry = { nickname:user.nickname, time: ((performance.now()-roundStartTime)/1000).toFixed(1), points };
+    rankEntries.push(entry);
+    renderRanking(rankEntries);
+
+    if (GAME_MODE==='streaming' && selectedStreamer){
+      db.ref(rankPath(selectedStreamer.id)).push(entry);
+
+      const prev = totalScores[user.id] || { nickname:user.nickname, score:0, correctCount:0 };
+      const updated = { nickname:user.nickname, score: prev.score + points, correctCount: prev.correctCount + 1 };
+      totalScores[user.id] = updated;
+      renderTotals(Object.values(totalScores), 'total-list', 'total-empty');
+      db.ref(totalsPath(selectedStreamer.id) + '/' + user.id).set(updated);
+    }
+  }
+}
+
+function renderTotals(entries, targetListId, targetEmptyId){
+  const list = document.getElementById(targetListId);
+  const empty = document.getElementById(targetEmptyId);
+  if (!list) return;
+  const sorted = (entries || []).slice().sort((a,b)=> b.score - a.score);
+  list.innerHTML = '';
+  if(sorted.length===0){ if(empty) empty.style.display='block'; return; }
+  if(empty) empty.style.display='none';
+  sorted.forEach((r,i)=>{
+    const li = document.createElement('li');
+    li.className = 'rank-item ' + (i===0?'first':i===1?'second':i===2?'third':'');
+    li.innerHTML = `<span class="rank-num">${i+1}</span><span class="rank-name">${r.nickname}</span><span class="rank-time">${r.score}pt</span>`;
+    list.appendChild(li);
+  });
+}
+
+function renderRanking(entries, targetListId, targetEmptyId){
+  const list = document.getElementById(targetListId || 'rank-list');
+  const empty = document.getElementById(targetEmptyId || 'rank-empty');
+  if (!list) return;
+  list.innerHTML = '';
+  if(!entries || entries.length===0){ if(empty) empty.style.display='block'; return; }
+  if(empty) empty.style.display='none';
+  entries.forEach((r,i)=>{
+    const li = document.createElement('li');
+    li.className = 'rank-item ' + (i===0?'first':i===1?'second':i===2?'third':'');
+    li.innerHTML = `<span class="rank-num">${i+1}</span><span class="rank-name">${r.nickname}</span><span class="rank-time">${r.time}s</span>`;
+    list.appendChild(li);
+  });
+}
+
+/* =========================================================
+   6. YouTube Player + 라운드 진행 상태머신
+   -- 컨트롤 패널(스트리머)만 상태를 "쓴다". 오버레이는 오직 읽기만 한다.
+========================================================= */
+let ytPlayer = null;
+let ytReady = false;
+let currentSongIndex = 0;
+
+function loadYT(){
+  const tag = document.createElement('script');
+  tag.src = "https://www.youtube.com/iframe_api";
+  document.body.appendChild(tag);
+}
+window.onYouTubeIframeAPIReady = function(){
+  const targetId = IS_OVERLAY ? 'yt-player-overlay' : 'yt-player';
+  if (!document.getElementById(targetId)) return;
+  ytPlayer = new YT.Player(targetId, {
+    height:'100%', width:'100%',
+    playerVars:{ controls:0, modestbranding:1, rel:0, disablekb:1, fs:0 },
+    events:{ 'onReady': ()=>{ ytReady = true; if(!IS_OVERLAY) ytPlayer.setVolume(currentVolume); } }
+  });
+};
+loadYT();
+
+/* ---- 음량 조절 (컨트롤 패널 전용, 오버레이는 OBS 소스 자체 음량 믹서로 조절) ---- */
+const VOLUME_STORAGE_KEY = 'chunmusic_volume_v1';
+const savedVolumeRaw = localStorage.getItem(VOLUME_STORAGE_KEY);
+let currentVolume = savedVolumeRaw === null ? 100 : Number(savedVolumeRaw);
+if (!Number.isFinite(currentVolume) || currentVolume < 0 || currentVolume > 100) currentVolume = 100;
+
+const volumeSlider = document.getElementById('volume-slider');
+if (volumeSlider){
+  volumeSlider.value = currentVolume;
+  document.getElementById('volume-value').textContent = currentVolume + '%';
+  volumeSlider.addEventListener('input', ()=>{
+    currentVolume = Number(volumeSlider.value);
+    document.getElementById('volume-value').textContent = currentVolume + '%';
+    localStorage.setItem(VOLUME_STORAGE_KEY, String(currentVolume));
+    if (ytReady && ytPlayer) ytPlayer.setVolume(currentVolume);
+  });
+}
+
+function initGame(){
+  currentSongIndex = 0;
+  updateRoundMeta();
+  resetStageUI();
+}
+
+function updateRoundMeta(){
+  const song = SONGS[currentSongIndex];
+  if(!song) return;
+  document.getElementById('round-index').textContent = `문제 ${currentSongIndex+1} / ${SONGS.length}`;
+  document.getElementById('song-category').textContent = song.category;
+}
+
+function resetStageUI(){
+  document.getElementById('video-cover').classList.remove('hidden-cover');
+  document.getElementById('reveal-banner').style.display='none';
+  document.getElementById('stage-state').textContent = '재생 대기 중';
+  document.getElementById('stage-timer').textContent = '--';
+  document.getElementById('start-round-btn').disabled = false;
+  document.getElementById('next-round-btn').disabled = true;
+  document.getElementById('feedback-line').textContent = '';
+  document.getElementById('feedback-line').className='feedback';
+  document.getElementById('streamer-answer-input').value = '';
+  document.getElementById('single-answer-input').value = '';
+  toggleAnswerInputs(false);
+  answeredUsers = new Set();
+  rankEntries = [];
+  renderRanking(rankEntries);
+  if (GAME_MODE==='streaming' && selectedStreamer){
+    db.ref(rankPath(selectedStreamer.id)).set(null);
+  }
+}
+
+function toggleAnswerInputs(enabled){
+  document.getElementById('streamer-answer-input').disabled = !enabled;
+  document.getElementById('submit-answer-btn').disabled = !enabled;
+  document.getElementById('single-answer-input').disabled = !enabled;
+  document.getElementById('single-submit-btn').disabled = !enabled;
+}
+
+// 세션 state를 RTDB에 쓴다 (스트리밍 모드에서만 호출됨)
+function writeSessionState(patch){
+  if (GAME_MODE!=='streaming' || !selectedStreamer) return;
+  patch.updatedAt = firebase.database.ServerValue.TIMESTAMP;
+  db.ref(statePath(selectedStreamer.id)).update(patch);
+}
+
+function startRound(){
+  if(!ytReady){ alert('플레이어 로딩 중입니다. 잠시 후 다시 시도해주세요.'); return; }
+  const song = SONGS[currentSongIndex];
+  document.getElementById('start-round-btn').disabled = true;
+
+  ytPlayer.loadVideoById({videoId: song.videoId, startSeconds: song.startSec});
+  document.getElementById('video-cover').classList.remove('hidden-cover');
+  document.getElementById('reveal-banner').style.display='none';
+
+  currentRoundActive = true;
+  roundStartTime = performance.now();
+
+  writeSessionState({
+    phase:'clip', currentIndex: currentSongIndex,
+    // 오버레이 재생에 필요한 최소 정보만 공유하고, 정답(title/aliases)은 공개 전까지 보내지 않는다.
+    song:{ videoId: song.videoId, startSec: song.startSec, category: song.category },
+    phaseEndAt: serverNow() + GAME_CONFIG.clipSeconds*1000,
+    phaseDurationSec: GAME_CONFIG.clipSeconds
+  });
+
+  runCountdown(GAME_CONFIG.clipSeconds, '음성 재생 중 (화면 비공개)', ()=>{
+    ytPlayer.pauseVideo();
+    currentRoundActive = false; // 재생 종료 시점부터 채팅 판정은 계속 열어둠(딜레이 버퍼 동안도 답 인정)
+    writeSessionState({ phase:'pre_delay', phaseEndAt: serverNow() + GAME_CONFIG.preAnswerDelay*1000, phaseDurationSec: GAME_CONFIG.preAnswerDelay });
+    runCountdown(GAME_CONFIG.preAnswerDelay, '방송 딜레이 대기 중', ()=>{
+      document.getElementById('stage-state').textContent = '정답을 제출하세요';
+      document.getElementById('stage-timer').textContent = '✍️';
+      toggleAnswerInputs(true);
+      currentRoundActive = true; // 정답 제출 대기 동안도 시청자 채팅 계속 인정
+      writeSessionState({ phase:'awaiting' });
+    });
+  });
+}
+
+function runCountdown(seconds, label, onDone){
+  let remain = seconds;
+  document.getElementById('stage-state').textContent = label;
+  document.getElementById('stage-timer').textContent = remain;
+  const timer = setInterval(()=>{
+    remain -= 1;
+    if(remain <= 0){
+      clearInterval(timer);
+      onDone();
+    } else {
+      document.getElementById('stage-timer').textContent = remain;
+    }
+  }, 1000);
+}
+
+function streamerSubmitAnswer(){
+  const val = document.getElementById('streamer-answer-input').value.trim();
+  if(!val) return;
+  finalizeAnswer();
+}
+
+function singleSubmitAnswer(){
+  const val = document.getElementById('single-answer-input').value.trim();
+  if(!val) return;
+  const song = SONGS[currentSongIndex];
+  const correct = song.aliases.some(a=>normalize(a)===normalize(val));
+  const fb = document.getElementById('feedback-line');
+  fb.textContent = correct ? '정답입니다! 🎉' : '아쉽지만 오답이에요';
+  fb.className = 'feedback ' + (correct?'correct':'wrong');
+  finalizeAnswer(); // 싱글플레이도 동일한 공개 연출 사용
+}
+
+function finalizeAnswer(){
+  currentRoundActive = false;
+  toggleAnswerInputs(false);
+  document.getElementById('stage-state').textContent = '정답 공개까지';
+  writeSessionState({ phase:'post_delay', phaseEndAt: serverNow() + GAME_CONFIG.postAnswerDelay*1000, phaseDurationSec: GAME_CONFIG.postAnswerDelay });
+  runCountdown(GAME_CONFIG.postAnswerDelay, '정답 공개까지', ()=>{
+    revealAnswer();
+  });
+}
+
+function revealAnswer(){
+  const song = SONGS[currentSongIndex];
+  document.getElementById('video-cover').classList.add('hidden-cover');
+  ytPlayer.seekTo(song.startSec, true);
+  ytPlayer.playVideo();
+  document.getElementById('reveal-banner').style.display='flex';
+  document.getElementById('reveal-answer-text').textContent = song.title;
+  document.getElementById('next-round-btn').disabled = false;
+
+  writeSessionState({
+    phase:'reveal',
+    song:{ videoId: song.videoId, startSec: song.startSec, category: song.category, title: song.title }
+  });
+
+  if (GAME_MODE==='streaming' && selectedStreamer){
+    db.ref(LOG_QUEUE_RTDB_PATH).push({
+      loggedAt: new Date().toISOString(),
+      streamerName: selectedStreamer.name,
+      songTitle: song.title,
+      firstCorrectNickname: rankEntries[0] ? rankEntries[0].nickname : null,
+      correctCount: rankEntries.length,
+      firstCorrectTimeSec: rankEntries[0] ? rankEntries[0].time : null
+    });
+  }
+}
+
+function nextRound(){
+  currentSongIndex = (currentSongIndex+1) % SONGS.length;
+  updateRoundMeta();
+  resetStageUI();
+  writeSessionState({ phase:'idle', currentIndex: currentSongIndex, song:null, phaseEndAt: null, phaseDurationSec: null });
+}
+
+/* =========================================================
+   7. 오버레이 화면 (읽기 전용, ?overlay&streamer=<id>)
+========================================================= */
+if (IS_OVERLAY){
+  goScreen('overlay');
+  initOverlay();
+}
+
+async function initOverlay(){
+  if (!OVERLAY_STREAMER_ID){
+    document.getElementById('overlay-stage-state').textContent = 'streamer 파라미터가 없습니다 (예: ?overlay&streamer=cheonyang)';
+    return;
+  }
+  const streamer = findStreamer(OVERLAY_STREAMER_ID);
+  if (!streamer){
+    document.getElementById('overlay-stage-state').textContent = '알 수 없는 스트리머입니다: ' + OVERLAY_STREAMER_ID;
+    return;
+  }
+
+  let overlayTicker = null;
+  let currentPhaseEndAt = null;
+
+  db.ref(statePath(OVERLAY_STREAMER_ID)).on('value', (snap)=>{
+    const state = snap.val();
+    if (!state){
+      document.getElementById('overlay-stage-state').textContent = '대기 중';
+      document.getElementById('overlay-stage-timer').textContent = '--';
+      document.getElementById('overlay-video-cover').classList.remove('hidden-cover');
+      document.getElementById('overlay-reveal-banner').style.display = 'none';
+      return;
+    }
+    applyOverlayState(state);
+  });
+
+  db.ref(rankPath(OVERLAY_STREAMER_ID)).on('value', (snap)=>{
+    const val = snap.val() || {};
+    const entries = Object.values(val); // push key 순서 = 제출 순서
+    renderRanking(entries, 'overlay-rank-list', 'overlay-rank-empty');
+  });
+
+  db.ref(totalsPath(OVERLAY_STREAMER_ID)).on('value', (snap)=>{
+    const val = snap.val() || {};
+    renderTotals(Object.values(val), 'overlay-total-list', 'overlay-total-empty');
+  });
+
+  function applyOverlayState(state){
+    const cover = document.getElementById('overlay-video-cover');
+    const stateLabel = document.getElementById('overlay-stage-state');
+    const timerLabel = document.getElementById('overlay-stage-timer');
+    const banner = document.getElementById('overlay-reveal-banner');
+
+    applyPanelCollapse('rank', !!state.rankCollapsed, { panelId:'overlay-rank-panel', iconId:'__none__' });
+    applyPanelCollapse('total', !!state.totalCollapsed, { panelId:'overlay-total-panel', iconId:'__none__' });
+
+    if (state.song && state.song.videoId && ytReady && ytPlayer){
+      const loaded = ytPlayer.getVideoData && ytPlayer.getVideoData().video_id;
+      if (loaded !== state.song.videoId){
+        ytPlayer.loadVideoById({ videoId: state.song.videoId, startSeconds: state.song.startSec || 0 });
+      }
+    }
+
+    if (overlayTicker) clearInterval(overlayTicker);
+    currentPhaseEndAt = state.phaseEndAt || null;
+
+    const labelMap = {
+      clip:'음성 재생 중 (화면 비공개)',
+      pre_delay:'방송 딜레이 대기 중',
+      awaiting:'정답을 제출하세요',
+      post_delay:'정답 공개까지',
+      reveal:'정답 공개!'
+    };
+
+    if (state.phase === 'reveal'){
+      cover.classList.add('hidden-cover');
+      banner.style.display = 'flex';
+      document.getElementById('overlay-reveal-answer-text').textContent = state.song ? state.song.title : '-';
+      if (ytReady && ytPlayer && state.song){ ytPlayer.seekTo(state.song.startSec || 0, true); ytPlayer.playVideo(); }
+      stateLabel.textContent = labelMap.reveal;
+      timerLabel.textContent = '🎉';
+      return;
+    }
+
+    cover.classList.remove('hidden-cover');
+    banner.style.display = 'none';
+    stateLabel.textContent = labelMap[state.phase] || '진행 중';
+
+    if (state.phase === 'awaiting'){
+      timerLabel.textContent = '✍️';
+      return;
+    }
+    if (!currentPhaseEndAt){ timerLabel.textContent = '--'; return; }
+
+    const tick = ()=>{
+      const remain = Math.max(0, Math.ceil((currentPhaseEndAt - serverNow())/1000));
+      timerLabel.textContent = remain;
+      if (remain<=0) clearInterval(overlayTicker);
+    };
+    tick();
+    overlayTicker = setInterval(tick, 250);
+  }
+}
+</script>
+</body>
+</html>
