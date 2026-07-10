@@ -93,6 +93,8 @@
 
   /* ---------- 모드 선택 ---------- */
   .mode-grid{ display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:20px; }
+  .mode-grid.cols-3{ grid-template-columns:1fr 1fr 1fr; }
+  @media (max-width:860px){ .mode-grid.cols-3{ grid-template-columns:1fr 1fr; } }
   @media (max-width:720px){ .mode-grid{ grid-template-columns:1fr; } }
   .mode-card{
     background:linear-gradient(160deg, var(--bg-2), var(--bg-1));
@@ -191,6 +193,11 @@
   .panel.collapsed .panel-header{ margin-bottom:0; }
   .panel.collapsed .rank-list, .panel.collapsed .empty-note{ display:none !important; }
   .rank-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; overflow-y:auto; max-height:420px; }
+  .score-board{ display:flex; gap:14px; justify-content:center; padding:8px 0 4px; }
+  .score-box{ text-align:center; flex:1; }
+  .score-val{ font-family:'Black Han Sans'; font-size:34px; color:var(--accent); line-height:1.1; }
+  .score-val.correct{ color:var(--accent-3); }
+  .score-lbl{ font-size:12px; color:var(--ink-dim); margin-top:4px; }
   .rank-item{
     display:flex; align-items:center; gap:10px; padding:9px 10px;
     background:rgba(255,255,255,0.03); border-radius:10px; border:1px solid transparent;
@@ -230,6 +237,50 @@
   #screen-overlay .video-cover{ background:radial-gradient(600px 300px at 50% 40%, rgba(24,215,242,0.14), transparent 60%), rgba(5,6,8,0.72); border-radius:var(--radius); }
   #screen-overlay .panel{ margin-top:14px; box-shadow:none; background:rgba(31,27,53,0.82); backdrop-filter:blur(6px); }
   #screen-overlay .rank-list{ max-height:260px; }
+
+  /* ---------- 곡 부족 안내 팝업 ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.7);
+    display:flex; align-items:center; justify-content:center;
+    z-index:1000; padding:20px;
+  }
+  .modal-box{
+    background:var(--bg-2); border:1px solid var(--line-accent); border-radius:var(--radius);
+    padding:32px 28px; max-width:420px; width:100%; text-align:center; box-shadow:var(--shadow);
+    user-select:text; -webkit-user-select:text;
+  }
+  .modal-box p{ line-height:1.8; font-size:15px; color:var(--ink); margin:0 0 24px; user-select:text; -webkit-user-select:text; }
+
+  /* ---------- 모바일 대응 ---------- */
+  @media (max-width:640px){
+    body{ padding:12px; }
+    .title-logo{ width:80%; max-width:170px; }
+    h1.game-title{ font-size:clamp(30px,9vw,44px); margin-bottom:30px; }
+    .btn{ padding:13px 26px; font-size:15px; width:100%; }
+    .back-row .btn, .mode-card, #screen-title .btn{ width:auto; }
+    .back-row{ margin-top:20px; }
+    .mode-grid, .mode-grid.cols-3{ grid-template-columns:1fr; gap:14px; }
+    .mode-card{ padding:24px 20px; }
+    .mode-card h3{ font-size:22px; }
+    .streamer-grid{ grid-template-columns:repeat(auto-fill, minmax(84px,1fr)); gap:10px; }
+    .avatar{ width:52px; height:52px; }
+    .count-grid{ gap:10px; }
+    .count-btn{ min-width:100px; padding:14px 18px; font-size:15px; }
+    .top-bar{ flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+    .top-bar .brand{ font-size:17px; }
+    .chip{ font-size:11px; }
+    .game-wrap{ gap:14px; }
+    .stage-timer{ font-size:38px; }
+    .stage-state{ font-size:16px; padding:0 12px; text-align:center; }
+    .reveal-banner .answer{ font-size:20px; }
+    .panel{ padding:14px; }
+    .control-row{ flex-direction:column; align-items:stretch; }
+    .control-row input[type=text]{ width:100%; min-width:0; }
+    .control-row .btn, .control-row .btn.ghost{ width:100%; }
+    #volume-row{ flex-direction:row; align-items:center; }
+    #volume-row input[type=range]{ min-width:0; }
+    .score-val{ font-size:28px; }
+  }
 </style>
 </head>
 <body class="bg-photo">
@@ -245,18 +296,60 @@
 <div class="screen" id="screen-mode">
   <h2 class="display" style="text-align:center;">모드를 선택하세요</h2>
   <div class="mode-grid">
-    <div class="mode-card" onclick="startSingle()">
+    <div class="mode-card" onclick="openSoloModeSelect()">
       <div class="eyebrow">SOLO</div>
       <h3>싱글플레이</h3>
       <p>혼자 문제를 듣고 직접 정답을 입력해서 맞혀보세요. 연습이나 개인 플레이에 적합해요.</p>
     </div>
-    <div class="mode-card" onclick="goScreen('streamer')">
+    <div class="mode-card" onclick="goScreen('maintenance')">
       <div class="eyebrow">LIVE</div>
       <h3>스트리밍 모드</h3>
       <p>스트리머를 선택하면 실제 방송 채팅을 불러와 시청자들과 함께 실시간으로 맞힙니다.</p>
     </div>
   </div>
   <div class="back-row"><button class="btn ghost" onclick="goScreen('title')">← 뒤로</button></div>
+</div>
+
+<!-- ============ 2.5. 스트리밍 모드 점검 안내 ============ -->
+<div class="screen" id="screen-maintenance">
+  <div style="text-align:center; padding:60px 20px;">
+    <h2 class="display">스트리밍 모드</h2>
+    <p style="color:var(--ink-dim); margin:20px 0 34px; line-height:1.8; font-size:15px;">
+      스트리밍 모드는 현재 점검 중입니다.<br>실시간 채팅 연동이 준비되는 대로 다시 열릴 예정이에요.
+    </p>
+    <button class="btn ghost" onclick="goScreen('mode')">← 뒤로</button>
+  </div>
+</div>
+
+<!-- ============ 2.6. 싱글플레이 - 문제 유형 선택 ============ -->
+<div class="screen" id="screen-quiztype">
+  <h2 class="display" style="text-align:center;">어떤 걸 맞혀볼까요?</h2>
+  <div class="mode-grid cols-3">
+    <div class="mode-card" onclick="chooseQuizType('title')">
+      <div class="eyebrow">TITLE</div>
+      <h3>노래 제목 맞히기</h3>
+      <p>재생되는 곡의 제목을 맞혀보세요.</p>
+    </div>
+    <div class="mode-card" onclick="chooseQuizType('member')">
+      <div class="eyebrow">SINGER</div>
+      <h3>부른 멤버 맞히기</h3>
+      <p>이 곡을 부른 멤버가 누구인지 맞혀보세요. (단체곡 제외)</p>
+    </div>
+    <div class="mode-card" onclick="chooseQuizType('member-specific')">
+      <div class="eyebrow">FOCUS</div>
+      <h3>멤버별 맞히기</h3>
+      <p>한 멤버를 골라서 그 멤버의 곡만 모아 풀어보세요.</p>
+    </div>
+  </div>
+  <div class="back-row"><button class="btn ghost" onclick="goScreen('mode')">← 뒤로</button></div>
+</div>
+
+<!-- ============ 2.7. 멤버별 맞히기 - 멤버 선택 ============ -->
+<div class="screen" id="screen-quizmember">
+  <h2 class="display" style="text-align:center;">멤버를 선택하세요</h2>
+  <div class="streamer-hint">선택한 멤버가 부른 곡들만 출제됩니다</div>
+  <div class="streamer-grid" id="quizmember-grid"></div>
+  <div class="back-row"><button class="btn ghost" onclick="goScreen('quiztype')">← 뒤로</button></div>
 </div>
 
 <!-- ============ 3. 스트리머 선택 ============ -->
@@ -291,6 +384,7 @@
     <div>
       <div class="stage">
         <div id="yt-player"></div>
+        <div id="soop-player" style="position:absolute; inset:0; display:none;"></div>
         <div class="video-cover" id="video-cover">
           <div class="eq"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
           <div class="stage-state" id="stage-state">재생 대기 중</div>
@@ -317,7 +411,7 @@
 
         <!-- 스트리밍 모드: 스트리머 정답 제출 -->
         <div class="control-row" id="streamer-submit-row">
-          <input type="text" id="streamer-answer-input" placeholder="정답 입력 후 제출 (예: 애국가)" disabled>
+          <input type="text" id="streamer-answer-input" placeholder="정답 입력 후 제출" disabled>
           <button class="btn" id="submit-answer-btn" onclick="streamerSubmitAnswer()" disabled>정답 제출</button>
         </div>
 
@@ -342,6 +436,13 @@
 
     <!-- 우측: 정답자 랭킹 -->
     <div>
+      <div class="panel" id="single-score-panel" style="display:none;">
+        <h4>진행 현황</h4>
+        <div class="score-board">
+          <div class="score-box"><div class="score-val" id="single-score-total">0</div><div class="score-lbl">문제수</div></div>
+          <div class="score-box"><div class="score-val correct" id="single-score-correct">0</div><div class="score-lbl">정답수</div></div>
+        </div>
+      </div>
       <div class="panel" id="rank-panel">
         <div class="panel-header" onclick="togglePanelCollapse('rank')">
           <h4>정답자 랭킹 (이번 문제)</h4>
@@ -366,6 +467,7 @@
 <div class="screen" id="screen-overlay">
   <div class="stage">
     <div id="yt-player-overlay"></div>
+    <div id="soop-player-overlay" style="position:absolute; inset:0; display:none;"></div>
     <div class="video-cover" id="overlay-video-cover">
       <div class="eq"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
       <div class="stage-state" id="overlay-stage-state">대기 중</div>
@@ -389,6 +491,14 @@
     </div>
     <ul class="rank-list" id="overlay-total-list"></ul>
     <div class="empty-note" id="overlay-total-empty">아직 집계된 점수가 없습니다</div>
+  </div>
+</div>
+
+<!-- ============ 곡 부족 안내 팝업 ============ -->
+<div id="insufficient-modal" class="modal-overlay" style="display:none;" onclick="closeInsufficientSongsModal()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <p>죄송합니다. 노래가 부족합니다.<br>팬분들의 노래 클립 링크 많은 제보 바랍니다.<br>메일: konamp63@gmail.com<br>SOOP: SSG_랜더스</p>
+    <button class="btn ghost" onclick="closeInsufficientSongsModal()">닫기</button>
   </div>
 </div>
 
@@ -443,13 +553,15 @@ const POINTS_DEFAULT = 50;
 function pointsForRankIndex(idx){ return idx < POINTS_BY_RANK.length ? POINTS_BY_RANK[idx] : POINTS_DEFAULT; }
 
 // 데모 폴백용 문제 데이터. Sheets 연동이 안 되어 있거나 song_quiz/songs 가 비어있을 때만 사용된다.
+// memberName: SongList 시트 D열 - 부른 멤버 이름(STREAMERS의 name과 일치) 또는 "단체"
 const FALLBACK_SONGS = [
-  { id:1, title:"애국가", videoId:"_Rd_A7haE1o", startSec:60, aliases:["애국가","대한민국애국가"] },
-  { id:2, title:"학교종", videoId:"_Rd_A7haE1o", startSec:60, aliases:["학교종","학교종이땡땡땡"] },
-  { id:3, title:"곰세마리", videoId:"_Rd_A7haE1o", startSec:60, aliases:["곰세마리","곰세마리가한집에있어"] },
+  { id:1, title:"애국가", source:"youtube", videoId:"_Rd_A7haE1o", startSec:60, aliases:["애국가","대한민국애국가"], memberName:"천양" },
+  { id:2, title:"학교종", source:"youtube", videoId:"_Rd_A7haE1o", startSec:60, aliases:["학교종","학교종이땡땡땡"], memberName:"마다옴" },
+  { id:3, title:"곰세마리", source:"youtube", videoId:"_Rd_A7haE1o", startSec:60, aliases:["곰세마리","곰세마리가한집에있어"], memberName:"단체" },
 ];
 
-let SONGS = [];
+let FULL_SONG_BANK = []; // Sheets/Firebase에서 불러온 문제 은행 전체 (모드/멤버 필터링 전)
+let SONGS = []; // 이번 세션에 실제로 출제되는 문제 목록 (필터링 + 셔플 + 개수 자르기 완료된 상태)
 
 // song_quiz/songs 는 정답 목록(aliases)이 포함된 "전체 문제 은행"이라 컨트롤 패널(스트리머)만 읽는다.
 // 오버레이/뷰어 쪽은 세션 state 에 실린 "현재 라운드" 정보만 받으므로 미래 문제의 정답을 미리 볼 수 없다.
@@ -469,13 +581,30 @@ async function loadSongs(){
     const snap = await withTimeout(db.ref(SONGS_RTDB_PATH).once("value"), 4000);
     const data = snap.val();
     if (data && Array.isArray(data.list) && data.list.length > 0){
-      SONGS = data.list;
+      FULL_SONG_BANK = data.list;
       return;
     }
   }catch(e){
     console.error("song_quiz/songs 로드 실패(또는 시간 초과), 데모 데이터 사용", e);
   }
-  SONGS = FALLBACK_SONGS;
+  FULL_SONG_BANK = FALLBACK_SONGS;
+}
+
+/* =========================================================
+   퀴즈 유형별 문제 은행 필터링
+   - title: 전체 곡 (제목 맞히기)
+   - member: "단체"가 아닌 곡만 (부른 멤버 맞히기 - 단체곡은 특정 정답이 없어서 제외)
+   - member-specific: 특정 멤버가 부른 곡만 (제목 맞히기, 대상만 좁힘)
+========================================================= */
+function songsForQuizType(type, memberName){
+  if (type==='member') return FULL_SONG_BANK.filter(s => s.memberName && s.memberName!=='단체');
+  if (type==='member-specific') return FULL_SONG_BANK.filter(s => s.memberName===memberName);
+  return FULL_SONG_BANK;
+}
+
+function getAnswerAliases(song){
+  if (QUIZ_TYPE==='member') return song.memberName ? [song.memberName] : [];
+  return song.aliases || [];
 }
 
 /* =========================================================
@@ -484,7 +613,7 @@ async function loadSongs(){
 function goScreen(name, opts){
   opts = opts || {};
   const leavingGame = name!=='game' && document.getElementById('screen-game').classList.contains('active');
-  if (leavingGame && ytPlayer && ytPlayer.pauseVideo){ ytPlayer.pauseVideo(); }
+  if (leavingGame){ pauseRoundVideo(); }
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('screen-'+name).classList.add('active');
   document.body.classList.toggle('bg-photo', name==='title' || name==='game');
@@ -499,6 +628,11 @@ if (!IS_OVERLAY){
   history.replaceState({ screen:'title' }, '', location.pathname + location.search);
   window.addEventListener('popstate', (e)=>{
     const name = (e.state && e.state.screen) || 'title';
+    // 퀴즈 진행 중(게임 화면)에는 뒤로가기로 못 빠져나가게 막는다 - "메인화면으로" 버튼만 유효.
+    if (document.getElementById('screen-game').classList.contains('active') && name!=='game'){
+      history.pushState({ screen:'game' }, '', location.pathname + location.search);
+      return;
+    }
     goScreen(name, { fromPopState:true });
   });
 }
@@ -538,8 +672,11 @@ function findStreamer(id){ return STREAMERS.find(s=>s.id===id) || null; }
 ========================================================= */
 let GAME_MODE = 'single'; // 'single' | 'streaming'
 let selectedStreamer = null;
+let QUIZ_TYPE = 'title'; // 'title' | 'member' | 'member-specific' (싱글플레이 전용)
+let selectedQuizMemberName = null; // member-specific 모드에서 고른 멤버 이름
 
-async function startSingle(){
+// "싱글플레이" 카드를 누르면 먼저 문제 유형(제목/멤버/멤버별)을 고르는 화면으로 간다.
+async function openSoloModeSelect(){
   if (chatSource){ chatSource.stop(); chatSource = null; } // 스트리밍 모드에서 넘어온 경우 남아있던 채팅 연결 정리
   GAME_MODE = 'single';
   document.getElementById('mode-chip').textContent = 'SOLO';
@@ -547,8 +684,69 @@ async function startSingle(){
   document.getElementById('single-answer-row').classList.add('active');
   document.getElementById('streamer-badge-row').style.display='none';
   document.getElementById('total-panel').style.display='none';
+  document.getElementById('rank-panel').style.display='none';
+  document.getElementById('single-score-panel').style.display='flex';
   await loadSongs();
-  renderCountScreen('mode', ()=>{
+  goScreen('quiztype');
+}
+
+function chooseQuizType(type){
+  QUIZ_TYPE = type;
+  if (type==='member-specific'){
+    renderQuizMemberGrid();
+    goScreen('quizmember');
+    return;
+  }
+  startSoloQuiz(songsForQuizType(type));
+}
+
+// 아직 등록된 곡 수가 너무 적은 멤버는 문제 출제 대신 제보 안내 팝업을 띄운다.
+const INSUFFICIENT_SONG_MEMBERS = ['카푸', '나나문', '플리', '김웰로'];
+
+function chooseQuizMember(memberName, cardEl){
+  if (INSUFFICIENT_SONG_MEMBERS.includes(memberName)){
+    showInsufficientSongsModal();
+    return;
+  }
+  document.querySelectorAll('#quizmember-grid .streamer-card').forEach(c=>c.classList.remove('selected'));
+  if (cardEl) cardEl.classList.add('selected');
+  selectedQuizMemberName = memberName;
+  startSoloQuiz(songsForQuizType('member-specific', memberName));
+}
+
+function showInsufficientSongsModal(){
+  document.getElementById('insufficient-modal').style.display = 'flex';
+}
+function closeInsufficientSongsModal(){
+  document.getElementById('insufficient-modal').style.display = 'none';
+}
+
+// 멤버별 맞히기: 문제 은행에 등장하는 "부른 멤버" 중 단체를 제외한 값들을 모아 카드로 보여준다.
+function renderQuizMemberGrid(){
+  const grid = document.getElementById('quizmember-grid');
+  grid.innerHTML = '';
+  const names = [...new Set(FULL_SONG_BANK.map(s=>s.memberName).filter(n=>n && n!=='단체'))];
+  names.forEach(name=>{
+    const meta = STREAMERS.find(s=>s.name===name);
+    const card = document.createElement('div');
+    card.className = 'streamer-card';
+    if (meta) card.style.setProperty('--mc', meta.color);
+    card.onclick = ()=> chooseQuizMember(name, card);
+    card.innerHTML = `
+      <div class="avatar">${meta ? avatarHtml(meta) : name[0]}</div>
+      <div class="sname">${name}</div>
+    `;
+    grid.appendChild(card);
+  });
+  if (names.length===0){
+    grid.innerHTML = '<div class="empty-note" style="grid-column:1/-1;">아직 멤버가 지정된 곡이 없습니다. 시트 D열을 채워주세요.</div>';
+  }
+}
+
+function startSoloQuiz(sourceSongs){
+  singleStats = { total:0, correct:0 };
+  renderSingleScore();
+  renderCountScreen(sourceSongs, 'quiztype', ()=>{
     goScreen('game');
     initGame();
   });
@@ -564,9 +762,37 @@ function shuffleArray(arr){
   return a;
 }
 
+// 순수 랜덤 셔플은 우연히 특정 멤버 곡에만 쏠릴 수 있어서, 멤버(memberName)별로 그룹을 나눠
+// 라운드로빈으로 골고루 뽑은 뒤 최종 순서만 다시 섞는다. 멤버 구분이 없는 곡은 "기타"로 묶인다.
+function balancedShuffleAndPick(bank, n){
+  const groups = {};
+  bank.forEach(s=>{
+    const key = s.memberName || '기타';
+    (groups[key] = groups[key] || []).push(s);
+  });
+  const groupKeys = Object.keys(groups);
+  groupKeys.forEach(k=>{ groups[k] = shuffleArray(groups[k]); });
+
+  const picked = [];
+  let round = 0;
+  while (picked.length < n){
+    let addedThisRound = false;
+    for (const k of groupKeys){
+      if (picked.length >= n) break;
+      if (groups[k][round]){
+        picked.push(groups[k][round]);
+        addedThisRound = true;
+      }
+    }
+    if (!addedThisRound) break; // 모든 그룹 소진
+    round++;
+  }
+  return shuffleArray(picked); // 뽑은 순서 그대로면 멤버별로 뭉쳐나오니 최종 출제 순서는 다시 섞음
+}
+
 // 10문제 단위 선택지 + "전체"를 SONGS 은행 크기에 맞춰 렌더링한다.
-function renderCountScreen(backScreenName, onConfirm){
-  const fullBank = SONGS;
+function renderCountScreen(sourceSongs, backScreenName, onConfirm){
+  const fullBank = sourceSongs;
   const total = fullBank.length;
   const grid = document.getElementById('count-grid');
   grid.innerHTML = '';
@@ -582,7 +808,7 @@ function renderCountScreen(backScreenName, onConfirm){
     btn.textContent = isAll ? `전체 (${total}문제)` : `${n}문제`;
     btn.disabled = total === 0;
     btn.onclick = ()=>{
-      SONGS = shuffleArray(fullBank).slice(0, n);
+      SONGS = balancedShuffleAndPick(fullBank, n);
       onConfirm();
     };
     grid.appendChild(btn);
@@ -629,9 +855,12 @@ async function selectStreamer(streamer, cardEl){
     await loadSongs();
     setTimeout(()=>{
       GAME_MODE = 'streaming';
+      QUIZ_TYPE = 'title';
       document.getElementById('mode-chip').textContent = 'LIVE · ' + streamer.name;
       document.getElementById('streamer-submit-row').style.display='flex';
       document.getElementById('single-answer-row').classList.remove('active');
+      document.getElementById('rank-panel').style.display='flex';
+      document.getElementById('single-score-panel').style.display='none';
       const badgeRow = document.getElementById('streamer-badge-row');
       badgeRow.style.display='flex';
       badgeRow.style.setProperty('--mc', streamer.color);
@@ -651,7 +880,7 @@ async function selectStreamer(streamer, cardEl){
       applyPanelCollapse('total', false);
       writeSessionState({ rankCollapsed:false, totalCollapsed:false });
 
-      renderCountScreen('streamer', ()=>{
+      renderCountScreen(FULL_SONG_BANK, 'streamer', ()=>{
         goScreen('game');
         initGame();
         startChatSource();
@@ -707,7 +936,8 @@ class FirebaseRelayChatSource{
   }
   _attach(onMessage){
     this.listener = (snap)=>{
-      if (this._skippedInitial !== true){ this._skippedInitial = true; return; } // child_added 첫 콜백(=마지막 기존 메시지) 무시
+      // startAfter(this.startedAtKey) 쿼리 자체가 이미 "구독 이전 메시지"를 걸러주므로
+      // 여기서 추가로 skip하면 안 됨 (예전 코드가 진짜 첫 채팅을 씹어먹는 버그가 있었음)
       const raw = snap.val();
       if (!raw) return;
       const user = { id: raw.userId || raw.uid || raw.id, nickname: raw.nickname || raw.nick || '익명' };
@@ -736,6 +966,12 @@ let rankEntries = []; // {nickname, time}
 let currentRoundActive = false;
 let roundStartTime = 0;
 let totalScores = {}; // userId -> {nickname, score, correctCount} - 세션 전체 누적 (라운드마다 초기화되지 않음)
+let singleStats = { total:0, correct:0 }; // 싱글플레이 전용 스코어보드 (문제수/정답수)
+
+function renderSingleScore(){
+  document.getElementById('single-score-total').textContent = singleStats.total;
+  document.getElementById('single-score-correct').textContent = singleStats.correct;
+}
 
 /* ---- 정답자 닉네임 패널 접기 기능 (시청자 친목/네임드화 방지용) ----
    컨트롤 패널에서 접으면 스트리머 화면과 오버레이(방송 송출 화면) 양쪽 모두에서 닉네임이 숨겨진다. */
@@ -768,7 +1004,7 @@ function handleIncomingChat(user, text){
   const guess = normalize(text.slice(1));
   const song = SONGS[currentSongIndex];
   if(!song) return;
-  const isCorrect = song.aliases.some(a => normalize(a) === guess);
+  const isCorrect = getAnswerAliases(song).some(a => normalize(a) === guess);
 
   if(isCorrect){
     const points = pointsForRankIndex(rankEntries.length);
@@ -827,6 +1063,70 @@ let ytPlayer = null;
 let ytReady = false;
 let currentSongIndex = 0;
 
+/* ---------------------------------------------------------
+   영상 소스 추상화 (유튜브 / SOOP VOD 클립)
+   -- SOOP(vod.sooplive.com) 임베드는 유튜브 IFrame API 같은 postMessage 제어 API가
+      공식 문서로 확인되지 않아서, pause/seek/음량 제어를 직접 못 한다. 그래서:
+      - 재생 시작/다시듣기: iframe을 새로 만들어서 처음(시작초)부터 다시 로드
+      - "정지": iframe을 통째로 지워서 재생을 멈춤 (pause가 아니라 unload)
+      - 음량 조절: 지원 안 됨 (SOOP 플레이어 자체 컨트롤을 써야 함)
+--------------------------------------------------------- */
+const YT_TARGET_ID = IS_OVERLAY ? 'yt-player-overlay' : 'yt-player';
+const SOOP_TARGET_ID = IS_OVERLAY ? 'soop-player-overlay' : 'soop-player';
+let currentVideoSource = null; // 'youtube' | 'soop' | null
+
+function setVideoSource(source){
+  currentVideoSource = source;
+  const ytEl = document.getElementById(YT_TARGET_ID);
+  const soopEl = document.getElementById(SOOP_TARGET_ID);
+  if (ytEl) ytEl.style.display = (source==='youtube') ? '' : 'none';
+  if (soopEl) soopEl.style.display = (source==='soop') ? 'block' : 'none';
+}
+
+function loadRoundVideo(song){
+  if (!song) return;
+  if (song.source === 'soop'){
+    setVideoSource('soop');
+    const soopEl = document.getElementById(SOOP_TARGET_ID);
+    if (!soopEl) return;
+    soopEl.innerHTML = '';
+    const iframe = document.createElement('iframe');
+    iframe.src = 'https://vod.sooplive.com/player/' + song.clipId + '?change_second=' + (song.startSec || 0);
+    iframe.style.cssText = 'width:100%; height:100%; border:0;';
+    iframe.allow = 'autoplay; encrypted-media; fullscreen';
+    iframe.setAttribute('allowfullscreen', '');
+    soopEl.appendChild(iframe);
+  } else {
+    setVideoSource('youtube');
+    if (ytPlayer && ytPlayer.loadVideoById) ytPlayer.loadVideoById({ videoId: song.videoId, startSeconds: song.startSec || 0 });
+  }
+}
+
+// 다시듣기/정답 공개 시 "시작초로 되감아서 재생"에 해당하는 동작
+function replayRoundVideo(song){
+  if (!song) return;
+  if (song.source === 'soop'){
+    loadRoundVideo(song); // SOOP는 seekTo가 없어 iframe을 통째로 다시 로드
+  } else if (ytPlayer && ytPlayer.seekTo){
+    ytPlayer.seekTo(song.startSec || 0, true);
+    ytPlayer.playVideo();
+  }
+}
+
+function pauseRoundVideo(){
+  if (currentVideoSource==='youtube' && ytPlayer && ytPlayer.pauseVideo){
+    ytPlayer.pauseVideo();
+  } else if (currentVideoSource==='soop'){
+    const soopEl = document.getElementById(SOOP_TARGET_ID);
+    if (soopEl) soopEl.innerHTML = ''; // pause API가 없어 iframe을 지워서 정지시킴
+  }
+}
+
+function setRoundVolume(v){
+  // SOOP 임베드는 이쪽에서 음량 제어가 안 되고, 플레이어 자체 컨트롤을 써야 함
+  if (ytPlayer && ytPlayer.setVolume) ytPlayer.setVolume(v);
+}
+
 function loadYT(){
   const tag = document.createElement('script');
   tag.src = "https://www.youtube.com/iframe_api";
@@ -838,10 +1138,37 @@ window.onYouTubeIframeAPIReady = function(){
   ytPlayer = new YT.Player(targetId, {
     height:'100%', width:'100%',
     playerVars:{ controls:0, modestbranding:1, rel:0, disablekb:1, fs:0 },
-    events:{ 'onReady': ()=>{ ytReady = true; if(!IS_OVERLAY) ytPlayer.setVolume(currentVolume); } }
+    events:{
+      'onReady': ()=>{ ytReady = true; if(!IS_OVERLAY) ytPlayer.setVolume(currentVolume); },
+      'onError': (e)=>{ if(!IS_OVERLAY) handleYtError(e); }
+    }
   });
 };
 loadYT();
+
+// 영상 소유자가 다른 사이트에서의 재생(임베드)을 막아둔 경우(101/150) 등 재생 불가한 곡은
+// 자동으로 건너뛴다. YouTube 데이터 API 키가 없어서 미리 걸러낼 수는 없고, 재생 시도 시점에
+// 감지해서 건너뛰는 방식이다.
+function handleYtError(e){
+  const code = e && e.data;
+  if (code !== 101 && code !== 150 && code !== 100 && code !== 2) return; // 임베드 차단/영상 없음/잘못된 ID만 처리
+  console.warn('재생 불가 영상(에러코드 ' + code + '), 건너뜁니다:', SONGS[currentSongIndex] && SONGS[currentSongIndex].videoId);
+  skipUnplayableSong();
+}
+
+function skipUnplayableSong(){
+  if (!document.getElementById('screen-game').classList.contains('active')) return; // 게임 화면이 아니면 무시
+  SONGS.splice(currentSongIndex, 1);
+  if (SONGS.length === 0){
+    alert('재생 가능한 곡이 남아있지 않습니다. 메인 화면으로 돌아갑니다.');
+    quitToTitle();
+    return;
+  }
+  if (currentSongIndex >= SONGS.length) currentSongIndex = 0;
+  updateRoundMeta();
+  resetStageUI();
+  startRound();
+}
 
 /* ---- 음량 조절 (컨트롤 패널 전용, 오버레이는 OBS 소스 자체 음량 믹서로 조절) ---- */
 const VOLUME_STORAGE_KEY = 'chunmusic_volume_v1';
@@ -857,7 +1184,7 @@ if (volumeSlider){
     currentVolume = Number(volumeSlider.value);
     document.getElementById('volume-value').textContent = currentVolume + '%';
     localStorage.setItem(VOLUME_STORAGE_KEY, String(currentVolume));
-    if (ytReady && ytPlayer) ytPlayer.setVolume(currentVolume);
+    if (ytReady) setRoundVolume(currentVolume);
   });
 }
 
@@ -885,6 +1212,9 @@ function resetStageUI(){
   document.getElementById('streamer-answer-input').value = '';
   document.getElementById('single-answer-input').value = '';
   toggleAnswerInputs(false);
+  // 제출 시 숨겼던 입력줄을 새 라운드에서 다시 보여준다 (모드에 맞는 쪽만)
+  document.getElementById('streamer-submit-row').style.display = (GAME_MODE==='streaming') ? 'flex' : 'none';
+  document.getElementById('single-answer-row').style.display = (GAME_MODE==='single') ? 'flex' : 'none';
   replayUsed = false;
   const replayBtn = document.getElementById('replay-btn');
   if (replayBtn){ replayBtn.disabled = true; replayBtn.textContent = '🔁 다시 듣기'; }
@@ -919,11 +1249,11 @@ function writeSessionState(patch){
 }
 
 function startRound(){
-  if(!ytReady){ alert('플레이어 로딩 중입니다. 잠시 후 다시 시도해주세요.'); return; }
   const song = SONGS[currentSongIndex];
+  if(song.source!=='soop' && !ytReady){ alert('플레이어 로딩 중입니다. 잠시 후 다시 시도해주세요.'); return; }
   document.getElementById('start-round-btn').disabled = true;
 
-  ytPlayer.loadVideoById({videoId: song.videoId, startSeconds: song.startSec});
+  loadRoundVideo(song);
   document.getElementById('video-cover').classList.remove('hidden-cover');
   document.getElementById('reveal-banner').style.display='none';
 
@@ -933,7 +1263,7 @@ function startRound(){
   writeSessionState({
     phase:'clip', currentIndex: currentSongIndex,
     // 오버레이 재생에 필요한 최소 정보만 공유하고, 정답(title/aliases)은 공개 전까지 보내지 않는다.
-    song:{ videoId: song.videoId, startSec: song.startSec },
+    song:{ source: song.source, videoId: song.videoId, clipId: song.clipId, startSec: song.startSec },
     phaseEndAt: serverNow() + GAME_CONFIG.answerLockSeconds*1000,
     phaseDurationSec: GAME_CONFIG.answerLockSeconds
   });
@@ -954,15 +1284,14 @@ function startRound(){
 // 한 라운드당 한 번만 다시 들을 수 있음
 let replayUsed = false;
 function replaySong(){
-  if (replayUsed || !ytReady || !ytPlayer) return;
   const song = SONGS[currentSongIndex];
-  if (!song) return;
+  if (replayUsed || !song) return;
+  if (song.source!=='soop' && (!ytReady || !ytPlayer)) return;
   replayUsed = true;
   const replayBtn = document.getElementById('replay-btn');
   if (replayBtn){ replayBtn.disabled = true; replayBtn.textContent = '🔁 다시듣기 완료'; }
 
-  ytPlayer.seekTo(song.startSec, true);
-  ytPlayer.playVideo();
+  replayRoundVideo(song);
 
   writeSessionState({ replayAt: serverNow() }); // 오버레이도 같은 순간 다시 재생하도록 신호
 }
@@ -985,6 +1314,7 @@ function runCountdown(seconds, label, onDone){
 function streamerSubmitAnswer(){
   const val = document.getElementById('streamer-answer-input').value.trim();
   if(!val) return;
+  document.getElementById('streamer-submit-row').style.display = 'none';
   finalizeAnswer();
 }
 
@@ -992,10 +1322,14 @@ function singleSubmitAnswer(){
   const val = document.getElementById('single-answer-input').value.trim();
   if(!val) return;
   const song = SONGS[currentSongIndex];
-  const correct = song.aliases.some(a=>normalize(a)===normalize(val));
+  const correct = getAnswerAliases(song).some(a=>normalize(a)===normalize(val));
+  document.getElementById('single-answer-row').style.display = 'none';
   const fb = document.getElementById('feedback-line');
   fb.textContent = correct ? '정답입니다! 🎉' : '아쉽지만 오답이에요';
   fb.className = 'feedback ' + (correct?'correct':'wrong');
+  singleStats.total += 1;
+  if (correct) singleStats.correct += 1;
+  renderSingleScore();
   finalizeAnswer(); // 싱글플레이도 동일한 공개 연출 사용
 }
 
@@ -1008,15 +1342,16 @@ function finalizeAnswer(){
 function revealAnswer(){
   const song = SONGS[currentSongIndex];
   document.getElementById('video-cover').classList.add('hidden-cover');
-  ytPlayer.seekTo(song.startSec, true);
-  ytPlayer.playVideo();
+  replayRoundVideo(song);
   document.getElementById('reveal-banner').style.display='flex';
-  document.getElementById('reveal-answer-text').textContent = song.title;
+  // 부른 멤버 맞히기 모드는 멤버 이름이 정답, 그 외에는 곡 제목이 정답
+  const revealText = (QUIZ_TYPE==='member') ? (song.memberName || '-') + ` (${song.title})` : song.title;
+  document.getElementById('reveal-answer-text').textContent = revealText;
   document.getElementById('next-round-btn').disabled = false;
 
   writeSessionState({
     phase:'reveal',
-    song:{ videoId: song.videoId, startSec: song.startSec, title: song.title }
+    song:{ source: song.source, videoId: song.videoId, clipId: song.clipId, startSec: song.startSec, title: song.title }
   });
 
   if (GAME_MODE==='streaming' && selectedStreamer){
@@ -1061,6 +1396,7 @@ async function initOverlay(){
   let overlayTicker = null;
   let currentPhaseEndAt = null;
   let lastReplayAt = null;
+  let lastLoadedSongKey = null; // source+id 조합으로 "같은 곡인지" 판단 (SOOP은 getVideoData 같은 조회 API가 없음)
 
   db.ref(statePath(OVERLAY_STREAMER_ID)).on('value', (snap)=>{
     const state = snap.val();
@@ -1094,16 +1430,16 @@ async function initOverlay(){
     applyPanelCollapse('rank', !!state.rankCollapsed, { panelId:'overlay-rank-panel', iconId:'__none__' });
     applyPanelCollapse('total', !!state.totalCollapsed, { panelId:'overlay-total-panel', iconId:'__none__' });
 
-    if (state.song && state.song.videoId && ytReady && ytPlayer){
-      const loaded = ytPlayer.getVideoData && ytPlayer.getVideoData().video_id;
-      if (loaded !== state.song.videoId){
-        ytPlayer.loadVideoById({ videoId: state.song.videoId, startSeconds: state.song.startSec || 0 });
+    if (state.song && (state.song.videoId || state.song.clipId) && (state.song.source==='soop' || (ytReady && ytPlayer))){
+      const key = (state.song.source||'youtube') + ':' + (state.song.videoId || state.song.clipId);
+      if (key !== lastLoadedSongKey){
+        lastLoadedSongKey = key;
+        loadRoundVideo(state.song);
         lastReplayAt = state.replayAt || null; // 새 곡 로드 시점 기준으로 재설정
       } else if (state.replayAt && state.replayAt !== lastReplayAt){
         // 컨트롤 패널에서 "다시 듣기"를 누른 순간 - 같은 구간을 다시 재생
         lastReplayAt = state.replayAt;
-        ytPlayer.seekTo(state.song.startSec || 0, true);
-        ytPlayer.playVideo();
+        replayRoundVideo(state.song);
       }
     }
 
@@ -1120,7 +1456,7 @@ async function initOverlay(){
       cover.classList.add('hidden-cover');
       banner.style.display = 'flex';
       document.getElementById('overlay-reveal-answer-text').textContent = state.song ? state.song.title : '-';
-      if (ytReady && ytPlayer && state.song){ ytPlayer.seekTo(state.song.startSec || 0, true); ytPlayer.playVideo(); }
+      if (state.song){ replayRoundVideo(state.song); }
       stateLabel.textContent = labelMap.reveal;
       timerLabel.textContent = '🎉';
       return;
