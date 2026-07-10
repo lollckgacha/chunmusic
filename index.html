@@ -120,6 +120,11 @@
   }
   .streamer-card:hover{ transform:translateY(-3px); border-color:var(--mc, var(--accent)); }
   .streamer-card.selected{ border-color:var(--mc, var(--accent)); box-shadow:0 0 0 2px var(--mc, var(--accent)) inset; }
+
+  /* ---------- 문제 수 선택 ---------- */
+  .count-grid{ display:flex; flex-wrap:wrap; justify-content:center; gap:14px; margin-bottom:28px; }
+  .count-btn{ min-width:120px; padding:18px 28px; font-size:18px; }
+  .count-btn.all{ border-color:var(--accent-2); color:var(--accent-2); }
   .avatar{
     width:64px; height:64px; border-radius:50%; margin:0 auto 10px;
     display:flex; align-items:center; justify-content:center;
@@ -260,6 +265,14 @@
   <div class="streamer-grid" id="streamer-grid"></div>
   <div class="loading-line" id="streamer-loading"></div>
   <div class="back-row"><button class="btn ghost" onclick="goScreen('mode')">← 뒤로</button></div>
+</div>
+
+<!-- ============ 3.5. 문제 수 선택 ============ -->
+<div class="screen" id="screen-count">
+  <h2 class="display" style="text-align:center;">문제 수를 선택하세요</h2>
+  <div class="streamer-hint">선택한 개수만큼 매번 무작위 순서로 출제됩니다</div>
+  <div class="count-grid" id="count-grid"></div>
+  <div class="back-row"><button class="btn ghost" id="count-back-btn">← 뒤로</button></div>
 </div>
 
 <!-- ============ 4. 게임 화면 (컨트롤 패널) ============ -->
@@ -465,10 +478,24 @@ async function loadSongs(){
 /* =========================================================
    2. 화면 전환
 ========================================================= */
-function goScreen(name){
+function goScreen(name, opts){
+  opts = opts || {};
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('screen-'+name).classList.add('active');
   document.body.classList.toggle('bg-photo', name==='title' || name==='game');
+  // 브라우저 뒤로가기/앞으로가기로도 화면을 이동할 수 있도록 히스토리를 남긴다.
+  // (오버레이 화면은 별도 창이라 히스토리를 건드릴 필요 없음)
+  if (!IS_OVERLAY && !opts.fromPopState){
+    history.pushState({ screen:name }, '', location.pathname + location.search);
+  }
+}
+
+if (!IS_OVERLAY){
+  history.replaceState({ screen:'title' }, '', location.pathname + location.search);
+  window.addEventListener('popstate', (e)=>{
+    const name = (e.state && e.state.screen) || 'title';
+    goScreen(name, { fromPopState:true });
+  });
 }
 
 // 데모용 스트리머(크루) 목록 - 실제 이미지가 있으면 avatarImg 경로에 파일을 넣으면 자동 로드되고,
@@ -506,8 +533,48 @@ async function startSingle(){
   document.getElementById('streamer-badge-row').style.display='none';
   document.getElementById('total-panel').style.display='none';
   await loadSongs();
-  goScreen('game');
-  initGame();
+  renderCountScreen('mode', ()=>{
+    goScreen('game');
+    initGame();
+  });
+}
+
+// 문제 은행(SONGS)을 무작위로 섞고, 그 중 앞의 n개만 이번 세션에서 사용한다.
+function shuffleArray(arr){
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// 10문제 단위 선택지 + "전체"를 SONGS 은행 크기에 맞춰 렌더링한다.
+function renderCountScreen(backScreenName, onConfirm){
+  const fullBank = SONGS;
+  const total = fullBank.length;
+  const grid = document.getElementById('count-grid');
+  grid.innerHTML = '';
+
+  const options = [];
+  for (let n = 10; n < total; n += 10) options.push(n);
+  options.push(total || 0); // "전체" - 문제가 하나도 없어도 버튼은 하나 뜨게 함
+
+  options.forEach(n=>{
+    const isAll = (n === total);
+    const btn = document.createElement('button');
+    btn.className = 'btn ghost count-btn' + (isAll ? ' all' : '');
+    btn.textContent = isAll ? `전체 (${total}문제)` : `${n}문제`;
+    btn.disabled = total === 0;
+    btn.onclick = ()=>{
+      SONGS = shuffleArray(fullBank).slice(0, n);
+      onConfirm();
+    };
+    grid.appendChild(btn);
+  });
+
+  document.getElementById('count-back-btn').onclick = ()=> goScreen(backScreenName);
+  goScreen('count');
 }
 
 function avatarHtml(s){
@@ -569,9 +636,11 @@ async function selectStreamer(streamer, cardEl){
       applyPanelCollapse('total', false);
       writeSessionState({ rankCollapsed:false, totalCollapsed:false });
 
-      goScreen('game');
-      initGame();
-      startChatSource();
+      renderCountScreen('streamer', ()=>{
+        goScreen('game');
+        initGame();
+        startChatSource();
+      });
     }, 500);
   }, 900);
 }
