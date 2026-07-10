@@ -161,6 +161,9 @@
     transition:opacity .5s ease;
   }
   .video-cover.hidden-cover{ opacity:0; pointer-events:none; }
+  /* SOOP 클립은 자동재생이 안 될 수 있어서, 화면은 그대로 가린 채 클릭만 아래 iframe으로 통과시켜
+     스트리머가 (안 보이는 채로) 재생 버튼을 눌러 시작할 수 있게 하는 안전장치 */
+  .video-cover.soop-clickthrough{ pointer-events:none; }
   .eq{ display:flex; align-items:flex-end; gap:6px; height:70px; margin-bottom:22px; }
   .eq span{
     width:8px; border-radius:4px;
@@ -1086,6 +1089,9 @@ function setVideoSource(source){
   const soopEl = document.getElementById(SOOP_TARGET_ID);
   if (ytEl) ytEl.style.display = (source==='youtube') ? '' : 'none';
   if (soopEl) soopEl.style.display = (source==='soop') ? 'block' : 'none';
+  // 다른 소스로 넘어갈 땐 이전 SOOP iframe을 완전히 지운다 - display:none만으로는
+  // 백그라운드에서 소리가 계속 나올 수 있어서(다음 곡 넘어가도 이전 곡 소리가 남는 버그) 통째로 제거해야 함.
+  if (source !== 'soop' && soopEl) soopEl.innerHTML = '';
 }
 
 function loadRoundVideo(song){
@@ -1096,7 +1102,11 @@ function loadRoundVideo(song){
     if (!soopEl) return;
     soopEl.innerHTML = '';
     const iframe = document.createElement('iframe');
-    iframe.src = 'https://vod.sooplive.com/player/' + song.clipId + '?change_second=' + (song.startSec || 0);
+    // autoPlay/volume 파라미터는 SOOP의 공식 문서가 없어서 확실하진 않지만, 자동재생/음량 50%를
+    // 시도해보기 위해 넣어둔 값이다. 실제로 안 먹으면 change_second 뒤 파라미터명을 조정해야 한다.
+    iframe.src = 'https://vod.sooplive.com/player/' + song.clipId
+      + '?change_second=' + (song.startSec || 0)
+      + '&autoPlay=true&volume=50';
     iframe.style.cssText = 'width:100%; height:100%; border:0;';
     iframe.allow = 'autoplay; encrypted-media; fullscreen';
     iframe.setAttribute('allowfullscreen', '');
@@ -1207,6 +1217,7 @@ function updateRoundMeta(){
 
 function resetStageUI(){
   document.getElementById('video-cover').classList.remove('hidden-cover');
+  document.getElementById('video-cover').classList.remove('soop-clickthrough');
   document.getElementById('reveal-banner').style.display='none';
   document.getElementById('stage-state').textContent = '재생 대기 중';
   document.getElementById('stage-timer').textContent = '--';
@@ -1259,7 +1270,9 @@ function startRound(){
   document.getElementById('start-round-btn').disabled = true;
 
   loadRoundVideo(song);
-  document.getElementById('video-cover').classList.remove('hidden-cover');
+  const coverEl = document.getElementById('video-cover');
+  coverEl.classList.remove('hidden-cover');
+  coverEl.classList.toggle('soop-clickthrough', song.source==='soop');
   document.getElementById('reveal-banner').style.display='none';
 
   currentRoundActive = false; // 잠금 구간(answerLockSeconds) 동안은 채팅 판정 안 함
