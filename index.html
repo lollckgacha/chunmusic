@@ -8,18 +8,19 @@
 <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gaegu:wght@700&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg-0:#0d0b1a;
-    --bg-1:#161326;
-    --bg-2:#1f1b35;
+    /* 천타버스 시리즈 공통 톤: 블랙 + 천양(대표 멤버) 퍼스널컬러 */
+    --bg-0:#07080a;
+    --bg-1:#101216;
+    --bg-2:#14161c;
     --line: rgba(255,255,255,0.08);
-    --ink: #F3EFFF;
-    --ink-dim: #9A93B8;
-    --accent: #FF3D7F;      /* 마젠타 - 진행/강조 */
-    --accent-2: #FFC857;    /* 골드 - 랭킹/정답 */
-    --accent-3: #5EE6C4;    /* 민트 - 보조 상태 */
+    --ink: #eef1f5;
+    --ink-dim: #868c9c;
+    --accent: #18D7F2;      /* 천양 퍼스널컬러 - 진행/강조 */
+    --accent-2: #FFC857;    /* 골드 - 랭킹 1위/정답 하이라이트 */
+    --accent-3: #5EE6C4;    /* 민트 - 정답 등 보조 상태 */
     --danger: #FF6A6A;
     --radius: 18px;
-    --shadow: 0 20px 60px rgba(0,0,0,0.45);
+    --shadow: 0 20px 60px rgba(0,0,0,0.55);
   }
   *{box-sizing:border-box;}
   html,body{height:100%;}
@@ -27,8 +28,8 @@
     margin:0;
     min-height:100vh;
     background:
-      radial-gradient(1200px 700px at 20% -10%, rgba(255,61,127,0.16), transparent 60%),
-      radial-gradient(900px 600px at 100% 10%, rgba(94,230,196,0.10), transparent 55%),
+      radial-gradient(1200px 700px at 20% -10%, rgba(24,215,242,0.14), transparent 60%),
+      radial-gradient(900px 600px at 100% 10%, rgba(24,215,242,0.08), transparent 55%),
       var(--bg-0);
     color:var(--ink);
     font-family:'Noto Sans KR', sans-serif;
@@ -37,6 +38,18 @@
     justify-content:center;
     padding:24px;
     overflow-x:hidden;
+  }
+  /* ---------- 메인 화면 / 게임 화면 전용 배경 사진 ---------- */
+  body.bg-photo{
+    background-image:
+      linear-gradient(rgba(7,8,10,0.55), rgba(7,8,10,0.88)),
+      radial-gradient(1200px 700px at 20% -10%, rgba(24,215,242,0.14), transparent 60%),
+      radial-gradient(900px 600px at 100% 10%, rgba(24,215,242,0.08), transparent 55%),
+      url('images/chunta.jpg');
+    background-size:cover;
+    background-position:center;
+    background-repeat:no-repeat;
+    background-attachment:fixed;
   }
   /* ---------- 오버레이 모드: OBS 브라우저 소스용, 배경 투명 ---------- */
   body.mode-overlay{
@@ -52,30 +65,23 @@
 
   /* ---------- 타이틀 화면 ---------- */
   #screen-title{ text-align:center; padding:60px 20px; }
-  .title-logo{ max-width:220px; width:60%; height:auto; margin:0 auto 20px; filter:drop-shadow(0 10px 30px rgba(255,61,127,0.35)); }
-  .title-mascots{ display:flex; justify-content:center; gap:10px; margin-bottom:28px; flex-wrap:wrap; }
-  .mascot-dot{
-    width:14px; height:14px; border-radius:50%;
-    box-shadow:0 0 12px currentColor;
-  }
+  .title-logo{ max-width:220px; width:60%; height:auto; margin:0 auto 20px; filter:drop-shadow(0 10px 30px rgba(24,215,242,0.35)); }
   h1.game-title{
     font-size:clamp(42px, 7vw, 84px);
-    margin:0 0 8px;
-    background:linear-gradient(180deg, #fff, var(--accent-2) 90%);
-    -webkit-background-clip:text; background-clip:text; color:transparent;
-    text-shadow:0 8px 40px rgba(255,61,127,0.35);
+    margin:0 0 44px;
+    color:var(--accent);
+    text-shadow:0 8px 40px rgba(24,215,242,0.45);
   }
-  .subtitle{ color:var(--ink-dim); font-size:16px; margin-bottom:44px; letter-spacing:2px; }
   .btn{
     font-family:'Noto Sans KR', sans-serif;
     font-weight:700; font-size:17px;
     border:none; cursor:pointer;
     padding:16px 40px; border-radius:999px;
-    background:var(--accent); color:#fff;
-    box-shadow:0 10px 30px rgba(255,61,127,0.35);
+    background:var(--accent); color:#04121a;
+    box-shadow:0 10px 30px rgba(24,215,242,0.35);
     transition:transform .15s ease, box-shadow .15s ease;
   }
-  .btn:hover{ transform:translateY(-2px); box-shadow:0 14px 36px rgba(255,61,127,0.5); }
+  .btn:hover{ transform:translateY(-2px); box-shadow:0 14px 36px rgba(24,215,242,0.5); }
   .btn:active{ transform:translateY(0); }
   .btn.ghost{
     background:transparent; color:var(--ink);
@@ -139,7 +145,7 @@
   #yt-player{ position:absolute; inset:0; width:100%; height:100%; }
   .video-cover{
     position:absolute; inset:0; z-index:5;
-    background:radial-gradient(600px 300px at 50% 40%, rgba(255,61,127,0.10), transparent 60%), #0b0a16;
+    background:radial-gradient(600px 300px at 50% 40%, rgba(24,215,242,0.10), transparent 60%), #050608;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     transition:opacity .5s ease;
   }
@@ -204,7 +210,7 @@
   .badge-dot{ width:10px; height:10px; border-radius:50%; background:var(--mc, var(--accent)); }
   .top-bar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
   .top-bar .brand{ font-family:'Black Han Sans'; font-size:22px; }
-  .chip{ font-size:12px; padding:4px 10px; border-radius:999px; background:rgba(255,61,127,0.15); color:var(--accent); border:1px solid rgba(255,61,127,0.3); }
+  .chip{ font-size:12px; padding:4px 10px; border-radius:999px; background:rgba(24,215,242,0.15); color:var(--accent); border:1px solid rgba(24,215,242,0.3); }
   .single-answer-row{ display:none; }
   .single-answer-row.active{ display:flex; }
   .feedback{ margin-top:10px; font-size:14px; min-height:20px; }
@@ -215,19 +221,17 @@
   /* ---------- 오버레이 전용 화면 ---------- */
   #screen-overlay{ max-width:520px; }
   #screen-overlay .stage{ box-shadow:none; border:none; background:transparent; }
-  #screen-overlay .video-cover{ background:radial-gradient(600px 300px at 50% 40%, rgba(255,61,127,0.14), transparent 60%), rgba(11,10,22,0.72); border-radius:var(--radius); }
+  #screen-overlay .video-cover{ background:radial-gradient(600px 300px at 50% 40%, rgba(24,215,242,0.14), transparent 60%), rgba(5,6,8,0.72); border-radius:var(--radius); }
   #screen-overlay .panel{ margin-top:14px; box-shadow:none; background:rgba(31,27,53,0.82); backdrop-filter:blur(6px); }
   #screen-overlay .rank-list{ max-height:260px; }
 </style>
 </head>
-<body>
+<body class="bg-photo">
 
 <!-- ============ 1. 타이틀 화면 ============ -->
 <div class="screen active" id="screen-title">
   <img class="title-logo" src="images/logo.png" alt="천타버스" onerror="this.style.display='none'">
-  <div class="title-mascots" id="title-mascots"></div>
   <h1 class="game-title">천타버스 노래 맞히기</h1>
-  <div class="subtitle">LISTEN &nbsp;·&nbsp; GUESS &nbsp;·&nbsp; WIN</div>
   <button class="btn" onclick="goScreen('mode')">시작하기</button>
 </div>
 
@@ -282,7 +286,7 @@
       </div>
 
       <div class="panel control-panel">
-        <div class="song-meta"><span id="round-index">문제 0 / 0</span><span id="song-category">-</span></div>
+        <div class="song-meta"><span id="round-index">문제 0 / 0</span></div>
         <div class="streamer-badge" id="streamer-badge-row" style="display:none;">
           <span class="badge-dot"></span><span id="streamer-badge-name">-</span>
           <a id="streamer-badge-link" href="#" target="_blank" rel="noopener" style="margin-left:auto; font-size:12px; color:var(--accent-3);">채널 바로가기 ↗</a>
@@ -290,8 +294,8 @@
 
         <div class="control-row" id="volume-row">
           <label for="volume-slider" style="font-size:13px; color:var(--ink-dim); white-space:nowrap;">🔊 음량</label>
-          <input type="range" id="volume-slider" min="0" max="100" value="100" style="flex:1;">
-          <span id="volume-value" style="font-size:12px; color:var(--ink-dim); width:36px; text-align:right;">100%</span>
+          <input type="range" id="volume-slider" min="0" max="100" value="50" style="flex:1;">
+          <span id="volume-value" style="font-size:12px; color:var(--ink-dim); width:36px; text-align:right;">50%</span>
         </div>
 
         <!-- 스트리밍 모드: 스트리머 정답 제출 -->
@@ -310,6 +314,7 @@
 
         <div class="control-row" style="margin-top:14px;">
           <button class="btn ghost" id="start-round-btn" onclick="startRound()">▶ 문제 재생</button>
+          <button class="btn ghost" id="replay-btn" onclick="replaySong()" disabled>🔁 다시 듣기</button>
           <button class="btn ghost" id="next-round-btn" onclick="nextRound()" disabled>다음 곡 →</button>
         </div>
         <div class="footnote" id="footnote-text">
@@ -404,9 +409,9 @@ if (IS_OVERLAY) document.body.classList.add("mode-overlay");
    1. 게임 설정 (시트에 넣지 않는 값들)
 ========================================================= */
 const GAME_CONFIG = {
-  clipSeconds: 10,      // 소리만 재생되는 시간
-  preAnswerDelay: 3,    // 재생 종료 후 스트리머 입력 가능까지 대기 (방송 딜레이 버퍼)
-  postAnswerDelay: 3,   // 정답 제출 후 공개까지 대기
+  clipSeconds: 10,       // 소리만 재생되는 전체 길이
+  answerLockSeconds: 3,  // 재생 시작 후 이 시간 동안은 답변 잠금 (노래는 계속 나오는 중)
+  postAnswerDelay: 3,    // 정답 제출 후 공개까지 대기
 };
 
 const SONGS_RTDB_PATH = "song_quiz/songs";               // 문제 전체 데이터 (컨트롤 패널만 읽음)
@@ -424,9 +429,9 @@ function pointsForRankIndex(idx){ return idx < POINTS_BY_RANK.length ? POINTS_BY
 
 // 데모 폴백용 문제 데이터. Sheets 연동이 안 되어 있거나 song_quiz/songs 가 비어있을 때만 사용된다.
 const FALLBACK_SONGS = [
-  { id:1, title:"애국가", videoId:"_Rd_A7haE1o", startSec:60, category:"응원/국가", aliases:["애국가","대한민국애국가"] },
-  { id:2, title:"학교종", videoId:"_Rd_A7haE1o", startSec:60, category:"동요", aliases:["학교종","학교종이땡땡땡"] },
-  { id:3, title:"곰세마리", videoId:"_Rd_A7haE1o", startSec:60, category:"동요", aliases:["곰세마리","곰세마리가한집에있어"] },
+  { id:1, title:"애국가", videoId:"_Rd_A7haE1o", startSec:60, aliases:["애국가","대한민국애국가"] },
+  { id:2, title:"학교종", videoId:"_Rd_A7haE1o", startSec:60, aliases:["학교종","학교종이땡땡땡"] },
+  { id:3, title:"곰세마리", videoId:"_Rd_A7haE1o", startSec:60, aliases:["곰세마리","곰세마리가한집에있어"] },
 ];
 
 let SONGS = [];
@@ -464,6 +469,7 @@ async function loadSongs(){
 function goScreen(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('screen-'+name).classList.add('active');
+  document.body.classList.toggle('bg-photo', name==='title' || name==='game');
 }
 
 // 데모용 스트리머(크루) 목록 - 실제 이미지가 있으면 avatarImg 경로에 파일을 넣으면 자동 로드되고,
@@ -486,19 +492,6 @@ const STREAMERS = [
   { id:"plli",      name:"플리",   mascot:"플리비", color:"#b8e1f5", avatarImg:"images/12.png", bjId:"plincess",    channelUrl:"https://ch.sooplive.co.kr/plincess" },
 ];
 function findStreamer(id){ return STREAMERS.find(s=>s.id===id) || null; }
-
-// 타이틀 화면 상단 점 장식 (크루 컬러)
-(function renderTitleMascots(){
-  const wrap = document.getElementById('title-mascots');
-  if (!wrap) return;
-  STREAMERS.forEach(s=>{
-    const d = document.createElement('div');
-    d.className='mascot-dot';
-    d.style.color = s.color;
-    d.style.background = s.color;
-    wrap.appendChild(d);
-  });
-})();
 
 /* =========================================================
    3. 모드 시작
@@ -769,8 +762,8 @@ loadYT();
 /* ---- 음량 조절 (컨트롤 패널 전용, 오버레이는 OBS 소스 자체 음량 믹서로 조절) ---- */
 const VOLUME_STORAGE_KEY = 'chunmusic_volume_v1';
 const savedVolumeRaw = localStorage.getItem(VOLUME_STORAGE_KEY);
-let currentVolume = savedVolumeRaw === null ? 100 : Number(savedVolumeRaw);
-if (!Number.isFinite(currentVolume) || currentVolume < 0 || currentVolume > 100) currentVolume = 100;
+let currentVolume = savedVolumeRaw === null ? 50 : Number(savedVolumeRaw);
+if (!Number.isFinite(currentVolume) || currentVolume < 0 || currentVolume > 100) currentVolume = 50;
 
 const volumeSlider = document.getElementById('volume-slider');
 if (volumeSlider){
@@ -794,7 +787,6 @@ function updateRoundMeta(){
   const song = SONGS[currentSongIndex];
   if(!song) return;
   document.getElementById('round-index').textContent = `문제 ${currentSongIndex+1} / ${SONGS.length}`;
-  document.getElementById('song-category').textContent = song.category;
 }
 
 function resetStageUI(){
@@ -809,6 +801,9 @@ function resetStageUI(){
   document.getElementById('streamer-answer-input').value = '';
   document.getElementById('single-answer-input').value = '';
   toggleAnswerInputs(false);
+  replayUsed = false;
+  const replayBtn = document.getElementById('replay-btn');
+  if (replayBtn){ replayBtn.disabled = true; replayBtn.textContent = '🔁 다시 듣기'; }
   answeredUsers = new Set();
   rankEntries = [];
   renderRanking(rankEntries);
@@ -840,29 +835,46 @@ function startRound(){
   document.getElementById('video-cover').classList.remove('hidden-cover');
   document.getElementById('reveal-banner').style.display='none';
 
-  currentRoundActive = true;
+  currentRoundActive = false; // 잠금 구간(answerLockSeconds) 동안은 채팅 판정 안 함
   roundStartTime = performance.now();
 
   writeSessionState({
     phase:'clip', currentIndex: currentSongIndex,
     // 오버레이 재생에 필요한 최소 정보만 공유하고, 정답(title/aliases)은 공개 전까지 보내지 않는다.
-    song:{ videoId: song.videoId, startSec: song.startSec, category: song.category },
-    phaseEndAt: serverNow() + GAME_CONFIG.clipSeconds*1000,
-    phaseDurationSec: GAME_CONFIG.clipSeconds
+    song:{ videoId: song.videoId, startSec: song.startSec },
+    phaseEndAt: serverNow() + GAME_CONFIG.answerLockSeconds*1000,
+    phaseDurationSec: GAME_CONFIG.answerLockSeconds
   });
 
-  runCountdown(GAME_CONFIG.clipSeconds, '음성 재생 중 (화면 비공개)', ()=>{
-    ytPlayer.pauseVideo();
-    currentRoundActive = false; // 재생 종료 시점부터 채팅 판정은 계속 열어둠(딜레이 버퍼 동안도 답 인정)
-    writeSessionState({ phase:'pre_delay', phaseEndAt: serverNow() + GAME_CONFIG.preAnswerDelay*1000, phaseDurationSec: GAME_CONFIG.preAnswerDelay });
-    runCountdown(GAME_CONFIG.preAnswerDelay, '방송 딜레이 대기 중', ()=>{
-      document.getElementById('stage-state').textContent = '정답을 제출하세요';
-      document.getElementById('stage-timer').textContent = '✍️';
-      toggleAnswerInputs(true);
-      currentRoundActive = true; // 정답 제출 대기 동안도 시청자 채팅 계속 인정
-      writeSessionState({ phase:'awaiting' });
-    });
+  // clipSeconds가 지나면 노래는 자연스럽게 멈추지만, 답변 창은 계속 열려있는 채로 둔다.
+  setTimeout(()=>{ if(ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo(); }, GAME_CONFIG.clipSeconds*1000);
+
+  runCountdown(GAME_CONFIG.answerLockSeconds, '음성 재생 중 (답변 잠금)', ()=>{
+    document.getElementById('stage-state').textContent = '정답을 제출하세요 (노래는 계속 나와요)';
+    document.getElementById('stage-timer').textContent = '✍️';
+    toggleAnswerInputs(true);
+    currentRoundActive = true; // 노래가 재생 중이어도 여기서부터 시청자 채팅 판정 시작
+    const replayBtn = document.getElementById('replay-btn');
+    if (replayBtn) replayBtn.disabled = replayUsed;
+    writeSessionState({ phase:'awaiting' });
   });
+}
+
+// 한 라운드당 한 번만 다시 들을 수 있음
+let replayUsed = false;
+function replaySong(){
+  if (replayUsed || !ytReady || !ytPlayer) return;
+  const song = SONGS[currentSongIndex];
+  if (!song) return;
+  replayUsed = true;
+  const replayBtn = document.getElementById('replay-btn');
+  if (replayBtn){ replayBtn.disabled = true; replayBtn.textContent = '🔁 다시듣기 완료'; }
+
+  ytPlayer.seekTo(song.startSec, true);
+  ytPlayer.playVideo();
+  setTimeout(()=>{ if(ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo(); }, GAME_CONFIG.clipSeconds*1000);
+
+  writeSessionState({ replayAt: serverNow() }); // 오버레이도 같은 순간 다시 재생하도록 신호
 }
 
 function runCountdown(seconds, label, onDone){
@@ -918,7 +930,7 @@ function revealAnswer(){
 
   writeSessionState({
     phase:'reveal',
-    song:{ videoId: song.videoId, startSec: song.startSec, category: song.category, title: song.title }
+    song:{ videoId: song.videoId, startSec: song.startSec, title: song.title }
   });
 
   if (GAME_MODE==='streaming' && selectedStreamer){
@@ -937,7 +949,8 @@ function nextRound(){
   currentSongIndex = (currentSongIndex+1) % SONGS.length;
   updateRoundMeta();
   resetStageUI();
-  writeSessionState({ phase:'idle', currentIndex: currentSongIndex, song:null, phaseEndAt: null, phaseDurationSec: null });
+  writeSessionState({ phase:'idle', currentIndex: currentSongIndex, song:null, phaseEndAt: null, phaseDurationSec: null, replayAt: null });
+  startRound(); // 문제가 넘어가면 바로 다음 곡 재생
 }
 
 /* =========================================================
@@ -961,6 +974,7 @@ async function initOverlay(){
 
   let overlayTicker = null;
   let currentPhaseEndAt = null;
+  let lastReplayAt = null;
 
   db.ref(statePath(OVERLAY_STREAMER_ID)).on('value', (snap)=>{
     const state = snap.val();
@@ -998,6 +1012,13 @@ async function initOverlay(){
       const loaded = ytPlayer.getVideoData && ytPlayer.getVideoData().video_id;
       if (loaded !== state.song.videoId){
         ytPlayer.loadVideoById({ videoId: state.song.videoId, startSeconds: state.song.startSec || 0 });
+        lastReplayAt = state.replayAt || null; // 새 곡 로드 시점 기준으로 재설정
+      } else if (state.replayAt && state.replayAt !== lastReplayAt){
+        // 컨트롤 패널에서 "다시 듣기"를 누른 순간 - 같은 구간을 다시 재생
+        lastReplayAt = state.replayAt;
+        ytPlayer.seekTo(state.song.startSec || 0, true);
+        ytPlayer.playVideo();
+        setTimeout(()=>{ if(ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo(); }, GAME_CONFIG.clipSeconds*1000);
       }
     }
 
@@ -1005,9 +1026,8 @@ async function initOverlay(){
     currentPhaseEndAt = state.phaseEndAt || null;
 
     const labelMap = {
-      clip:'음성 재생 중 (화면 비공개)',
-      pre_delay:'방송 딜레이 대기 중',
-      awaiting:'정답을 제출하세요',
+      clip:'음성 재생 중 (답변 잠금)',
+      awaiting:'정답을 제출하세요 (노래는 계속 나와요)',
       post_delay:'정답 공개까지',
       reveal:'정답 공개!'
     };
