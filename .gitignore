@@ -7,3 +7,7 @@ claude-code-prompt.md
 
 # 로컬 개발 서버 설정
 .claude/
+
+# SOOP 채팅 릴레이 서버 - 실제 시크릿은 .env에만 넣고 여기서 제외 (.env.example은 추적함)
+soop-chat-relay/.env
+soop-chat-relay/node_modules/

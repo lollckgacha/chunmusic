@@ -1,0 +1,97 @@
+// 천타버스 노래 맞히기 - SOOP 실시간 채팅 릴레이 서버
+//
+// SOOP(구 아프리카TV)은 공식 Chat SDK가 있지만 (1) 확장 프로그램 심사 절차가 있어 승인까지 시간이
+// 걸리고, (2) 문서상 "현재는 본인 방송에만 접속 가능"이라 12명 각자의 로그인이 필요한 구조다.
+// 그래서 커뮤니티가 리버스엔지니어링한 비공식 라이브러리(soop-extension, npm)를 사용해서
+// 로그인 없이 읽기 전용으로 채팅을 받아온다.
+//
+// ⚠️ 검증 안내: 이 코드는 개발 환경에 실제 SOOP 방송에 접속할 방법이 없어 라이브로 테스트하지
+// 못했다. soop-extension 라이브러리의 README 예제를 기준으로 작성했지만, 실제 배포 후 반드시
+// 방송 중인 스트리머로 직접 확인해봐야 한다. 콘솔 로그에 연결 성공/실패가 찍히니 그걸로 확인할 것.
+//
+// 동작 방식: 12개 채널에 상시 연결해두고, 채팅이 오면 정규화해서 Firebase RTDB의
+// chat_relay/{streamerId}/messages 경로에 push한다. chunmusic/index.html의
+// FirebaseRelayChatSource가 바로 이 경로를 구독하도록 이미 만들어져 있다.
+
+import { SoopChatEvent, SoopClient } from 'soop-extension';
+
+const FIREBASE_URL = (process.env.FIREBASE_URL || 'https://dongpa2026-2fda5-default-rtdb.asia-southeast1.firebasedatabase.app').replace(/\/$/, '');
+const FIREBASE_SECRET = process.env.FIREBASE_SECRET;
+
+if (!FIREBASE_SECRET) {
+  console.error('❌ FIREBASE_SECRET 환경변수가 없습니다. .env.example을 참고해서 .env를 만들거나 배포 환경변수에 설정하세요.');
+  process.exit(1);
+}
+
+// chunmusic/index.html 의 STREAMERS 배열과 반드시 동일하게 맞출 것 (streamerId -> SOOP bjId)
+const STREAMER_BJ_IDS = {
+  chunyang: '243000',
+  madaom: 'madaomm',
+  nanamoon: 'nanamoon777',
+  imhaming: 'imha22',
+  moonmomo: 'doormomo',
+  chebi: 'chebi2',
+  kapu: 'kappuchan',
+  kyaang: 'kyaang123',
+  kimwello: 'wellro314',
+  moca: 'mocamu2',
+  dalta: 'dalta20',
+  plli: 'plincess',
+};
+
+const RECONNECT_AFTER_ERROR_MS = 30000; // 연결 실패(방송 종료 등) 시 재시도 간격
+const RECONNECT_AFTER_CLOSE_MS = 10000; // 정상 연결 후 끊겼을 때 재시도 간격
+
+async function pushChatMessage(streamerId, entry) {
+  const url = `${FIREBASE_URL}/chat_relay/${streamerId}/messages.json?auth=${FIREBASE_SECRET}`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry),
+    });
+    if (!res.ok) {
+      console.error(`[${streamerId}] Firebase 응답 오류: ${res.status} ${await res.text()}`);
+    }
+  } catch (e) {
+    console.error(`[${streamerId}] Firebase 전송 실패:`, e.message);
+  }
+}
+
+function connectStreamerChat(streamerId, bjId) {
+  const client = new SoopClient();
+  const chat = client.chat({ streamerId: bjId }); // login을 안 넘기면 읽기 전용으로 연결됨
+
+  chat.on(SoopChatEvent.CHAT, (response) => {
+    pushChatMessage(streamerId, {
+      userId: response.userId,
+      nickname: response.username,
+      text: response.comment,
+      ts: Date.now(),
+    });
+  });
+
+  // ⚠️ 아래 error/close 이벤트명은 soop-extension 실제 구현과 다를 수 있다 (문서로 직접
+  // 확인 못 함). 콘솔에 예상과 다른 로그가 뜨면 이 부분부터 의심할 것.
+  chat.on('error', (err) => {
+    console.error(`[${streamerId}] 채팅 연결 오류:`, err && err.message ? err.message : err);
+  });
+  chat.on('close', () => {
+    console.warn(`[${streamerId}] 연결이 끊겼습니다. ${RECONNECT_AFTER_CLOSE_MS / 1000}초 후 재연결 시도`);
+    setTimeout(() => connectStreamerChat(streamerId, bjId), RECONNECT_AFTER_CLOSE_MS);
+  });
+
+  chat.connect()
+    .then(() => {
+      console.log(`✅ [${streamerId}] (bjId=${bjId}) 채팅 연결 성공`);
+    })
+    .catch((err) => {
+      console.error(`⚠️ [${streamerId}] 연결 실패 (방송 중이 아니거나 bjId가 틀렸을 수 있음):`, err.message);
+      setTimeout(() => connectStreamerChat(streamerId, bjId), RECONNECT_AFTER_ERROR_MS);
+    });
+}
+
+console.log('SOOP 채팅 릴레이 서버 시작 - 12개 채널에 연결을 시도합니다...');
+for (const [streamerId, bjId] of Object.entries(STREAMER_BJ_IDS)) {
+  connectStreamerChat(streamerId, bjId);
+}
