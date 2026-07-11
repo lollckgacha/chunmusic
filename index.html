@@ -1576,6 +1576,9 @@ function revealAnswer(){
   const revealText = (QUIZ_TYPE==='member') ? (song.memberName || '-') + ` (${song.title})` : song.title;
   document.getElementById('reveal-answer-text').textContent = revealText;
   document.getElementById('next-round-btn').disabled = false;
+  // 정답이 공개된 뒤엔 다시 들을 이유가 없으니, "문제 재생" 버튼과 마찬가지로 비활성화한다.
+  const replayBtn = document.getElementById('replay-btn');
+  if (replayBtn) replayBtn.disabled = true;
 
   writeSessionState({
     phase:'reveal',
