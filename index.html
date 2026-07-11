@@ -270,8 +270,13 @@
     .mode-card h3{ font-size:22px; }
     .streamer-grid{ grid-template-columns:repeat(auto-fill, minmax(84px,1fr)); gap:10px; }
     .avatar{ width:52px; height:52px; }
-    .count-grid{ gap:10px; }
-    .count-btn{ min-width:100px; padding:14px 18px; font-size:15px; }
+    /* 문제 수 버튼이 화면 밖으로 넘치지 않도록 감싸는 대신 가로 스와이프로 넘겨볼 수 있게 함 */
+    .count-grid{
+      gap:10px; flex-wrap:nowrap; justify-content:flex-start;
+      overflow-x:auto; -webkit-overflow-scrolling:touch;
+      scroll-snap-type:x proximity; padding-bottom:10px; margin:0 -12px 20px; padding-left:12px; padding-right:12px;
+    }
+    .count-btn{ min-width:100px; padding:14px 18px; font-size:15px; width:auto; flex-shrink:0; scroll-snap-align:center; }
     .top-bar{ flex-wrap:wrap; gap:8px; margin-bottom:14px; }
     .top-bar .brand{ font-size:17px; }
     .chip{ font-size:11px; }
@@ -469,6 +474,18 @@
   </div>
 </div>
 
+<!-- ============ 4.5. 싱글플레이 결과 화면 ============ -->
+<div class="screen" id="screen-results">
+  <div style="text-align:center; padding:60px 20px;">
+    <h2 class="display">결과</h2>
+    <div class="score-board" style="margin:30px 0;">
+      <div class="score-box"><div class="score-val" id="results-total">0</div><div class="score-lbl">문제수</div></div>
+      <div class="score-box"><div class="score-val correct" id="results-correct">0</div><div class="score-lbl">정답수</div></div>
+    </div>
+    <button class="btn" onclick="quitToTitle()">🏠 메인화면으로</button>
+  </div>
+</div>
+
 <!-- ============ 5. OBS 오버레이 전용 화면 (?overlay&streamer=<id>) ============ -->
 <div class="screen" id="screen-overlay">
   <div class="stage">
@@ -503,8 +520,8 @@
 <!-- ============ 곡 부족 안내 팝업 ============ -->
 <div id="insufficient-modal" class="modal-overlay" style="display:none;" onclick="closeInsufficientSongsModal()">
   <div class="modal-box" onclick="event.stopPropagation()">
-    <p>죄송합니다. 노래가 부족합니다.<br>팬분들의 노래 클립 링크 많은 제보 바랍니다.<br>메일: konamp63@gmail.com<br>SOOP: SSG_랜더스</p>
-    <button class="btn ghost" onclick="closeInsufficientSongsModal()">닫기</button>
+    <p>유튜브 영상이 부족해서 문제수가 적습니다. 플레이시 참고 바랍니다.</p>
+    <button class="btn ghost" onclick="closeInsufficientSongsModal()">확인</button>
   </div>
 </div>
 
@@ -692,6 +709,7 @@ async function openSoloModeSelect(){
   document.getElementById('total-panel').style.display='none';
   document.getElementById('rank-panel').style.display='none';
   document.getElementById('single-score-panel').style.display='flex';
+  document.getElementById('footnote-text').style.display='none'; // 채팅 안내문은 스트리밍 모드 전용
   await loadSongs();
   goScreen('quiztype');
 }
@@ -710,21 +728,27 @@ function chooseQuizType(type){
 const INSUFFICIENT_SONG_MEMBERS = ['카푸', '나나문', '플리', '김웰로'];
 
 function chooseQuizMember(memberName, cardEl){
-  if (INSUFFICIENT_SONG_MEMBERS.includes(memberName)){
-    showInsufficientSongsModal();
-    return;
-  }
   document.querySelectorAll('#quizmember-grid .streamer-card').forEach(c=>c.classList.remove('selected'));
   if (cardEl) cardEl.classList.add('selected');
   selectedQuizMemberName = memberName;
-  startSoloQuiz(songsForQuizType('member-specific', memberName));
+  const proceed = ()=> startSoloQuiz(songsForQuizType('member-specific', memberName));
+  if (INSUFFICIENT_SONG_MEMBERS.includes(memberName)){
+    showInsufficientSongsModal(proceed); // 안내만 하고, 확인하면 그대로 플레이 진행
+  } else {
+    proceed();
+  }
 }
 
-function showInsufficientSongsModal(){
+let insufficientModalProceedCallback = null;
+function showInsufficientSongsModal(onProceed){
+  insufficientModalProceedCallback = onProceed || null;
   document.getElementById('insufficient-modal').style.display = 'flex';
 }
 function closeInsufficientSongsModal(){
   document.getElementById('insufficient-modal').style.display = 'none';
+  const cb = insufficientModalProceedCallback;
+  insufficientModalProceedCallback = null;
+  if (cb) cb();
 }
 
 // 멤버별 맞히기: 문제 은행에 등장하는 "부른 멤버" 중 단체를 제외한 값들을 모아 카드로 보여준다.
@@ -805,8 +829,10 @@ function renderCountScreen(sourceSongs, backScreenName, onConfirm){
   const grid = document.getElementById('count-grid');
   grid.innerHTML = '';
 
+  // 버튼이 너무 많아지지 않도록 10/20/30까지는 10단위, 그 이후(50~)는 50단위로만 보여준다.
   const options = [];
-  for (let n = 10; n < total; n += 10) options.push(n);
+  [10, 20, 30].forEach(n=>{ if (n < total) options.push(n); });
+  for (let n = 50; n < total; n += 50) options.push(n);
   options.push(total || 0); // "전체" - 문제가 하나도 없어도 버튼은 하나 뜨게 함
 
   options.forEach(n=>{
@@ -874,6 +900,7 @@ async function selectStreamer(streamer, cardEl){
       badgeRow.style.setProperty('--mc', streamer.color);
       document.getElementById('streamer-badge-name').textContent = streamer.name + ' 방송 채팅 연동 중';
       document.getElementById('streamer-badge-link').href = streamer.channelUrl || '#';
+      document.getElementById('footnote-text').style.display = '';
 
       // 새 스트리밍 세션 시작 - 이 스트리머의 세션 누적 점수판을 초기화한다.
       totalScores = {};
@@ -1092,6 +1119,8 @@ function setVideoSource(source){
   // 다른 소스로 넘어갈 땐 이전 SOOP iframe을 완전히 지운다 - display:none만으로는
   // 백그라운드에서 소리가 계속 나올 수 있어서(다음 곡 넘어가도 이전 곡 소리가 남는 버그) 통째로 제거해야 함.
   if (source !== 'soop' && soopEl) soopEl.innerHTML = '';
+  // 유튜브에서 SOOP(또는 다른 소스)로 넘어갈 때도 유튜브 오디오가 백그라운드에서 계속 나오지 않도록 확실히 멈춘다.
+  if (source !== 'youtube' && ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
 }
 
 function loadRoundVideo(song){
@@ -1207,6 +1236,11 @@ function initGame(){
   currentSongIndex = 0;
   updateRoundMeta();
   resetStageUI();
+  // 싱글플레이는 재생 버튼을 누르지 않아도 3초 카운트다운 후 첫 문제가 자동으로 시작된다.
+  if (GAME_MODE === 'single'){
+    document.getElementById('start-round-btn').disabled = true;
+    runCountdown(3, '잠시 후 문제가 시작됩니다', startRound);
+  }
 }
 
 function updateRoundMeta(){
@@ -1255,6 +1289,13 @@ document.getElementById('streamer-answer-input').addEventListener('keydown', (e)
 });
 document.getElementById('single-answer-input').addEventListener('keydown', (e)=>{
   if (e.key==='Enter' && !e.target.disabled) singleSubmitAnswer();
+});
+
+// 정답 공개 화면에서 엔터를 누르면 "다음 곡"과 동일하게 다음 문제로 넘어간다.
+document.addEventListener('keydown', (e)=>{
+  if (e.key!=='Enter') return;
+  const nextBtn = document.getElementById('next-round-btn');
+  if (nextBtn && !nextBtn.disabled && document.getElementById('screen-game').classList.contains('active')) nextRound();
 });
 
 // 세션 state를 RTDB에 쓴다 (스트리밍 모드에서만 호출됨)
@@ -1391,11 +1432,22 @@ function revealAnswer(){
 }
 
 function nextRound(){
+  // 싱글플레이는 정한 문제 수를 다 풀면 다시 처음으로 돌아가지 않고 결과 화면으로 마무리한다.
+  if (GAME_MODE === 'single' && currentSongIndex + 1 >= SONGS.length){
+    showResultsScreen();
+    return;
+  }
   currentSongIndex = (currentSongIndex+1) % SONGS.length;
   updateRoundMeta();
   resetStageUI();
   writeSessionState({ phase:'idle', currentIndex: currentSongIndex, song:null, phaseEndAt: null, phaseDurationSec: null, replayAt: null });
   startRound(); // 문제가 넘어가면 바로 다음 곡 재생
+}
+
+function showResultsScreen(){
+  document.getElementById('results-total').textContent = singleStats.total;
+  document.getElementById('results-correct').textContent = singleStats.correct;
+  goScreen('results');
 }
 
 /* =========================================================
