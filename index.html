@@ -310,7 +310,7 @@
       <h3>싱글플레이</h3>
       <p>혼자 문제를 듣고 직접 정답을 입력해서 맞혀보세요. 연습이나 개인 플레이에 적합해요.</p>
     </div>
-    <div class="mode-card" onclick="goScreen('streamer')">
+    <div class="mode-card" onclick="openStreamingModeSelect()">
       <div class="eyebrow">LIVE</div>
       <h3>스트리밍 모드</h3>
       <p>스트리머를 선택하면 실제 방송 채팅을 불러와 시청자들과 함께 실시간으로 맞힙니다.</p>
@@ -367,7 +367,7 @@
   <div class="streamer-hint">선택한 스트리머의 방송 채팅을 불러와 시청자 정답을 함께 집계합니다</div>
   <div class="streamer-grid" id="streamer-grid"></div>
   <div class="loading-line" id="streamer-loading"></div>
-  <div class="back-row"><button class="btn ghost" onclick="goScreen('mode')">← 뒤로</button></div>
+  <div class="back-row"><button class="btn ghost" onclick="goScreen('quiztype')">← 뒤로</button></div>
 </div>
 
 <!-- ============ 3.4. 방송 딜레이 보정 (선택) ============ -->
@@ -683,7 +683,7 @@ function continueAfterCalibration(){
 }
 
 function proceedToCountScreenAfterCalibration(){
-  renderCountScreen(FULL_SONG_BANK, 'streamer', ()=>{
+  renderCountScreen(songsForQuizType(QUIZ_TYPE, selectedQuizMemberName), 'streamer', ()=>{
     goScreen('game');
     initGame();
     startChatSource();
@@ -823,7 +823,7 @@ function findStreamer(id){ return STREAMERS.find(s=>s.id===id) || null; }
 ========================================================= */
 let GAME_MODE = 'single'; // 'single' | 'streaming'
 let selectedStreamer = null;
-let QUIZ_TYPE = 'title'; // 'title' | 'member' | 'member-specific' (싱글플레이 전용)
+let QUIZ_TYPE = 'title'; // 'title' | 'member' | 'member-specific' (싱글플레이/스트리밍 공용)
 let selectedQuizMemberName = null; // member-specific 모드에서 고른 멤버 이름
 
 // "싱글플레이" 카드를 누르면 먼저 문제 유형(제목/멤버/멤버별)을 고르는 화면으로 간다.
@@ -842,11 +842,23 @@ async function openSoloModeSelect(){
   goScreen('quiztype');
 }
 
+// "스트리밍 모드" 카드를 눌러도 싱글플레이와 동일하게 문제 유형부터 고른 뒤, 그 다음에 스트리머를 선택하게 한다.
+async function openStreamingModeSelect(){
+  if (chatSource){ chatSource.stop(); chatSource = null; }
+  GAME_MODE = 'streaming';
+  await loadSongs();
+  goScreen('quiztype');
+}
+
 function chooseQuizType(type){
   QUIZ_TYPE = type;
   if (type==='member-specific'){
     renderQuizMemberGrid();
     goScreen('quizmember');
+    return;
+  }
+  if (GAME_MODE==='streaming'){
+    goScreen('streamer');
     return;
   }
   startSoloQuiz(songsForQuizType(type));
@@ -859,7 +871,9 @@ function chooseQuizMember(memberName, cardEl){
   document.querySelectorAll('#quizmember-grid .streamer-card').forEach(c=>c.classList.remove('selected'));
   if (cardEl) cardEl.classList.add('selected');
   selectedQuizMemberName = memberName;
-  const proceed = ()=> startSoloQuiz(songsForQuizType('member-specific', memberName));
+  const proceed = GAME_MODE==='streaming'
+    ? ()=> goScreen('streamer')
+    : ()=> startSoloQuiz(songsForQuizType('member-specific', memberName));
   if (INSUFFICIENT_SONG_MEMBERS.includes(memberName)){
     showInsufficientSongsModal(proceed); // 안내만 하고, 확인하면 그대로 플레이 진행
   } else {
@@ -1012,10 +1026,8 @@ async function selectStreamer(streamer, cardEl){
   loading.textContent = `${streamer.name}님의 방송 채팅 데이터를 불러오는 중...`;
   setTimeout(async ()=>{
     loading.textContent = `연결 완료! (${streamer.name} 채팅 수신 중)`;
-    await loadSongs();
     setTimeout(()=>{
       GAME_MODE = 'streaming';
-      QUIZ_TYPE = 'title';
       document.getElementById('mode-chip').textContent = 'LIVE · ' + streamer.name;
       document.getElementById('streamer-submit-row').style.display='flex';
       document.getElementById('single-answer-row').classList.remove('active');
