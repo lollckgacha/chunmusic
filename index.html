@@ -1395,6 +1395,16 @@ function preloadNextSong(){
 }
 
 // 다시듣기/정답 공개 시 "시작초로 되감아서 재생"에 해당하는 동작
+function forceReloadYtVideo(ap, song){
+  if (!ap || !ap.loadVideoById) return;
+  if (!IS_OVERLAY){
+    if (ap.unMute) ap.unMute();
+    if (ap.setVolume) ap.setVolume(currentVolume);
+  }
+  ap.loadVideoById({ videoId: song.videoId, startSeconds: song.startSec || 0 });
+  ytSlots[activeYtSlot].loadedVideoId = song.videoId;
+}
+
 function replayRoundVideo(song){
   if (!song) return;
   const ap = activePlayer();
@@ -1403,23 +1413,26 @@ function replayRoundVideo(song){
     return;
   }
   if (!ap) return;
-  // 정답 공개 시점에 (감지를 못 했더라도) 실제로는 광고가 재생 중이었을 수 있다 - 그 상태에서
-  // seekTo만 하면 광고 구간 안에서만 움직이거나, 광고가 끝난 뒤 뒤늦게 0초부터 재생되어 정답
-  // 영상이 아예 안 뜨거나 늦게 뜨는 문제가 있었다. 실제로 물려있는 영상ID가 다르면 seek 대신
-  // 정답 영상을 통째로 다시 로드해서 확실하게 보여준다.
-  let actualId = null;
-  try { actualId = ap.getVideoData && ap.getVideoData().video_id; } catch(e){}
-  if (actualId && actualId !== song.videoId && ap.loadVideoById){
-    if (!IS_OVERLAY){
-      if (ap.unMute) ap.unMute();
-      if (ap.setVolume) ap.setVolume(currentVolume);
-    }
-    ap.loadVideoById({ videoId: song.videoId, startSeconds: song.startSec || 0 });
-    ytSlots[activeYtSlot].loadedVideoId = song.videoId;
-  } else if (ap.seekTo){
+  // 정답 공개 시점에 광고가 재생 중이었으면 seekTo만으론 광고 구간 안에서만 움직이거나,
+  // 광고가 끝난 뒤 뒤늦게 0초부터 재생되어 정답 영상이 아예 안 뜨거나 늦게 뜨는 문제가 있었다.
+  // video_id 불일치 감지가 실제 광고에서 안 먹는 경우가 있어서(비공식 편법이라 신뢰도가 낮음),
+  // 우선 평소처럼 빠른 seekTo를 시도해두고, 0.6초 뒤에 정말 정답 영상이 재생 중인지 다시
+  // 확인해서 여전히 아니면 그때 확실하게 통째로 다시 로드하는 이중 안전장치를 둔다.
+  if (ap.seekTo){
     ap.seekTo(song.startSec || 0, true);
     ap.playVideo();
   }
+  setTimeout(()=>{
+    if (activePlayer() !== ap) return; // 그 사이 다음 라운드로 넘어갔으면 무시
+    let actualId = null, state = null;
+    try {
+      actualId = ap.getVideoData && ap.getVideoData().video_id;
+      state = ap.getPlayerState ? ap.getPlayerState() : null;
+    } catch(e){ return; }
+    const idMismatch = actualId && actualId !== song.videoId;
+    const notPlaying = state !== 1 && state !== 3; // 1=PLAYING, 3=BUFFERING 둘 다 아니면 뭔가 멈춰있는 상태
+    if (idMismatch || notPlaying) forceReloadYtVideo(ap, song);
+  }, 600);
 }
 
 function pauseRoundVideo(){
