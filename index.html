@@ -276,13 +276,18 @@
     .mode-card h3{ font-size:22px; }
     .streamer-grid{ grid-template-columns:repeat(3, 1fr); gap:10px; }
     .avatar{ width:52px; height:52px; }
-    /* 문제 수 버튼이 화면 밖으로 넘치지 않도록 감싸는 대신 가로 스와이프로 넘겨볼 수 있게 함 */
+    /* 문제 수 버튼을 세로로 쌓고, 넘치는 만큼은 하늘색 반투명 자체 스크롤바로 내려서 본다 */
     .count-grid{
-      gap:10px; flex-wrap:nowrap; justify-content:flex-start;
-      overflow-x:auto; -webkit-overflow-scrolling:touch;
-      scroll-snap-type:x proximity; padding-bottom:10px; margin:0 -12px 20px; padding-left:12px; padding-right:12px;
+      flex-direction:column; flex-wrap:nowrap; align-items:stretch;
+      gap:10px; max-height:54vh; overflow-y:auto; overflow-x:hidden;
+      -webkit-overflow-scrolling:touch; margin:0 0 20px; padding-right:8px;
+      scrollbar-width:thin; scrollbar-color:rgba(135,206,250,0.55) transparent;
     }
-    .count-btn{ min-width:100px; padding:14px 18px; font-size:15px; width:auto; flex-shrink:0; scroll-snap-align:center; }
+    .count-grid::-webkit-scrollbar{ width:8px; }
+    .count-grid::-webkit-scrollbar-track{ background:transparent; }
+    .count-grid::-webkit-scrollbar-thumb{ background:rgba(135,206,250,0.55); border-radius:999px; }
+    .count-grid::-webkit-scrollbar-thumb:hover{ background:rgba(135,206,250,0.8); }
+    .count-btn{ min-width:0; width:100%; padding:14px 18px; font-size:15px; flex-shrink:0; }
     .top-bar{ flex-wrap:wrap; gap:8px; margin-bottom:14px; }
     .top-bar .brand{ font-size:17px; }
     .chip{ font-size:11px; }
