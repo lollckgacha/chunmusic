@@ -186,6 +186,14 @@
   }
   .reveal-banner .label{ font-size:12px; color:var(--accent-3); letter-spacing:2px; }
   .reveal-banner .answer{ font-family:'Black Han Sans'; font-size:26px; color:#fff; }
+  .ad-badge{
+    position:absolute; top:12px; right:12px; z-index:7;
+    display:none; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:999px;
+    background:rgba(255,110,50,0.16); border:1px solid rgba(255,140,70,0.6);
+    color:#ffb27a; font-size:13px; font-weight:700;
+  }
+  .ad-badge.showing{ display:flex; }
 
   .panel{
     background:var(--bg-2); border:1px solid var(--line-accent); border-radius:var(--radius);
@@ -436,6 +444,7 @@
           <div class="stage-state" id="stage-state">재생 대기 중</div>
           <div class="stage-timer" id="stage-timer">--</div>
         </div>
+        <div class="ad-badge" id="ad-badge">📢 광고가 나오고 있어요</div>
         <div class="reveal-banner" id="reveal-banner" style="display:none;">
           <div class="label">정답</div>
           <div class="answer" id="reveal-answer-text">-</div>
@@ -1234,6 +1243,25 @@ let ytPlayer = null;
 let ytReady = false;
 let currentSongIndex = 0;
 
+// 광고 재생 감지 (비공식 편법): 광고가 나오는 동안엔 getVideoData().video_id가 우리가 요청한
+// videoId와 다른 값(광고 자체의 영상ID)으로 바뀌는 경우가 많다는 걸 이용한 추측이다.
+// 유튜브 공식 문서에 없는 동작이라 100% 신뢰할 순 없지만, "광고가 나오고 있어요" 안내용으로는 충분하다.
+let expectedYtVideoId = null;
+function setAdBadgeVisible(showing){
+  const badge = document.getElementById('ad-badge');
+  if (badge) badge.classList.toggle('showing', !!showing);
+}
+setInterval(()=>{
+  if (IS_OVERLAY) return; // 안내 배지는 컨트롤 패널 화면에서만 표시
+  if (currentVideoSource!=='youtube' || !expectedYtVideoId || !ytPlayer || !ytPlayer.getVideoData) {
+    setAdBadgeVisible(false);
+    return;
+  }
+  let data;
+  try { data = ytPlayer.getVideoData(); } catch(e){ return; }
+  setAdBadgeVisible(!!(data && data.video_id && data.video_id !== expectedYtVideoId));
+}, 600);
+
 /* ---------------------------------------------------------
    영상 소스 추상화 (유튜브 / SOOP VOD 클립)
    -- SOOP(vod.sooplive.com) 임베드는 유튜브 IFrame API 같은 postMessage 제어 API가
@@ -1276,10 +1304,13 @@ function loadRoundVideo(song){
     iframe.allow = 'autoplay; encrypted-media; fullscreen';
     iframe.setAttribute('allowfullscreen', '');
     soopEl.appendChild(iframe);
+    expectedYtVideoId = null; // SOOP 라운드는 광고 감지 대상이 아님
   } else {
     setVideoSource('youtube');
     if (ytPlayer && ytPlayer.loadVideoById) ytPlayer.loadVideoById({ videoId: song.videoId, startSeconds: song.startSec || 0 });
+    expectedYtVideoId = song.videoId || null;
   }
+  setAdBadgeVisible(false); // 새 라운드 로드 직후엔 광고 배지를 일단 숨기고, 워처가 곧 실제 상태로 갱신함
 }
 
 // 다시듣기/정답 공개 시 "시작초로 되감아서 재생"에 해당하는 동작
