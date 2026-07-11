@@ -1400,7 +1400,23 @@ function replayRoundVideo(song){
   const ap = activePlayer();
   if (song.source === 'soop'){
     loadRoundVideo(song); // SOOP는 seekTo가 없어 iframe을 통째로 다시 로드
-  } else if (ap && ap.seekTo){
+    return;
+  }
+  if (!ap) return;
+  // 정답 공개 시점에 (감지를 못 했더라도) 실제로는 광고가 재생 중이었을 수 있다 - 그 상태에서
+  // seekTo만 하면 광고 구간 안에서만 움직이거나, 광고가 끝난 뒤 뒤늦게 0초부터 재생되어 정답
+  // 영상이 아예 안 뜨거나 늦게 뜨는 문제가 있었다. 실제로 물려있는 영상ID가 다르면 seek 대신
+  // 정답 영상을 통째로 다시 로드해서 확실하게 보여준다.
+  let actualId = null;
+  try { actualId = ap.getVideoData && ap.getVideoData().video_id; } catch(e){}
+  if (actualId && actualId !== song.videoId && ap.loadVideoById){
+    if (!IS_OVERLAY){
+      if (ap.unMute) ap.unMute();
+      if (ap.setVolume) ap.setVolume(currentVolume);
+    }
+    ap.loadVideoById({ videoId: song.videoId, startSeconds: song.startSec || 0 });
+    ytSlots[activeYtSlot].loadedVideoId = song.videoId;
+  } else if (ap.seekTo){
     ap.seekTo(song.startSec || 0, true);
     ap.playVideo();
   }
@@ -1644,6 +1660,10 @@ function unlockAnswering(){
   currentRoundActive = true; // 노래가 재생 중이어도 여기서부터 시청자 채팅 판정 시작
   const replayBtn = document.getElementById('replay-btn');
   if (replayBtn) replayBtn.disabled = replayUsed;
+  // 엔터로 다음 문제로 넘어온 경우 입력칸이 활성화되기만 하고 포커스는 안 잡혀서, 클릭을
+  // 한 번 더 해야 입력이 되는 문제가 있었다 - 여기서 명시적으로 포커스를 준다.
+  const inputToFocus = document.getElementById(GAME_MODE==='single' ? 'single-answer-input' : 'streamer-answer-input');
+  if (inputToFocus) inputToFocus.focus();
   writeSessionState({ phase:'awaiting' });
 }
 
