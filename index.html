@@ -1570,6 +1570,33 @@ function coverVideoInstantly(coverEl){
   coverEl.style.transition = ''; // 트랜지션을 다시 켠다 (다음 번 "정답 공개" 페이드 아웃은 그대로 부드럽게 동작)
 }
 
+// 정답 공개 시 소리/자막은 정상인데 유튜브 iframe 화면만 검게 멈춰버리는 경우가 있다.
+// (video-cover의 opacity 트랜지션 때문에 GPU 컴포지팅이 꼬이는 브라우저 렌더링 버그로 추정)
+// 페이드가 끝난 직후 iframe에 아주 살짝 transform을 줬다 되돌려서 강제로 다시 그리게 한다.
+// 소리가 끊기지 않도록 display/reload 방식이 아니라 transform만 살짝 건드리는 방식을 쓴다.
+function forceRepaintYtIframe(){
+  const ap = activePlayer();
+  if (!ap || !ap.getIframe) return;
+  let el;
+  try { el = ap.getIframe(); } catch(e){ return; }
+  if (!el) return;
+  el.style.transform = 'translateZ(0)';
+  void el.offsetHeight;
+  el.style.transform = '';
+}
+
+function scheduleYtRepaintAfterReveal(coverEl){
+  if (!coverEl) return;
+  let done = false;
+  const run = ()=>{
+    if (done) return;
+    done = true;
+    forceRepaintYtIframe();
+  };
+  coverEl.addEventListener('transitionend', run, { once:true });
+  setTimeout(run, 600); // transitionend가 안 뜨는 환경(트랜지션이 이미 그 값이었던 경우 등)을 위한 안전장치
+}
+
 function resetStageUI(){
   coverVideoInstantly(document.getElementById('video-cover'));
   document.getElementById('video-cover').classList.remove('soop-clickthrough');
@@ -1740,7 +1767,9 @@ function finalizeAnswer(){
 
 function revealAnswer(){
   const song = SONGS[currentSongIndex];
-  document.getElementById('video-cover').classList.add('hidden-cover');
+  const coverEl = document.getElementById('video-cover');
+  coverEl.classList.add('hidden-cover');
+  scheduleYtRepaintAfterReveal(coverEl);
   replayRoundVideo(song);
   document.getElementById('reveal-banner').style.display='flex';
   // 부른 멤버 맞히기 모드는 멤버 이름이 정답, 그 외에는 곡 제목이 정답
@@ -1864,6 +1893,7 @@ async function initOverlay(){
 
     if (state.phase === 'reveal'){
       cover.classList.add('hidden-cover');
+      scheduleYtRepaintAfterReveal(cover);
       banner.style.display = 'flex';
       document.getElementById('overlay-reveal-answer-text').textContent = state.song ? state.song.title : '-';
       if (state.song){ replayRoundVideo(state.song); }
