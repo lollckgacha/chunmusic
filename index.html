@@ -113,9 +113,10 @@
   #screen-streamer h2{ text-align:center; margin-bottom:6px; }
   .streamer-hint{ text-align:center; color:var(--ink-dim); margin-bottom:30px; font-size:14px;}
   .streamer-grid{
-    display:grid; grid-template-columns:repeat(auto-fill, minmax(120px,1fr));
+    display:grid; grid-template-columns:repeat(6, 1fr);
     gap:18px; margin-bottom:28px;
   }
+  @media (max-width:900px){ .streamer-grid{ grid-template-columns:repeat(4, 1fr); } }
   .streamer-card{
     background:var(--bg-2); border:1px solid var(--line-accent); border-radius:16px;
     padding:16px 10px 14px; text-align:center; cursor:pointer;
@@ -268,7 +269,7 @@
     .mode-grid, .mode-grid.cols-3{ grid-template-columns:1fr; gap:14px; }
     .mode-card{ padding:24px 20px; }
     .mode-card h3{ font-size:22px; }
-    .streamer-grid{ grid-template-columns:repeat(auto-fill, minmax(84px,1fr)); gap:10px; }
+    .streamer-grid{ grid-template-columns:repeat(3, 1fr); gap:10px; }
     .avatar{ width:52px; height:52px; }
     /* 문제 수 버튼이 화면 밖으로 넘치지 않도록 감싸는 대신 가로 스와이프로 넘겨볼 수 있게 함 */
     .count-grid{
