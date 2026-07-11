@@ -437,7 +437,6 @@
     <div>
       <div class="stage">
         <div id="yt-player"></div>
-        <div id="yt-player-b" style="position:absolute; inset:0; display:none;"></div>
         <div id="soop-player" style="position:absolute; inset:0; display:none;"></div>
         <div class="video-cover" id="video-cover">
           <div class="eq"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
@@ -1240,24 +1239,8 @@ function renderRanking(entries, targetListId, targetEmptyId){
 ========================================================= */
 let currentSongIndex = 0;
 
-/* ---------------------------------------------------------
-   유튜브 플레이어 2개(A/B)를 슬롯으로 두고 번갈아 쓴다 ("무음 미리재생" 트릭)
-   -- 라운드가 시작되면 화면에 보이는 슬롯(activeYtSlot)과 별개로, 안 보이는 다른 슬롯에
-      "다음 곡"을 무음으로 미리 로드해서 재생시켜둔다. 그러면 그 곡에 광고가 붙어있어도
-      이번 라운드가 진행되는 동안 미리 소진될 확률이 높고, 다음 라운드로 넘어갈 때는 이미
-      광고가 끝난(혹은 끝나가는) 상태의 슬롯을 그대로 화면에 꺼내 쓸 수 있다.
-   -- 오버레이(OBS 소스)는 "다음 곡"을 미리 알 방법이 없어서(컨트롤 패널이 그 순간에야 상태를
-      RTDB에 쓰기 때문) 슬롯 B를 아예 만들지 않는다 - 항상 슬롯 A만 쓰는 기존 방식 그대로 동작.
---------------------------------------------------------- */
-const YT_SLOT_IDS = { A: (IS_OVERLAY ? 'yt-player-overlay' : 'yt-player'), B: IS_OVERLAY ? null : 'yt-player-b' };
-const ytSlots = {
-  A: { player:null, ready:false, loadedVideoId:null },
-  B: { player:null, ready:false, loadedVideoId:null }
-};
-let activeYtSlot = 'A';
-function activePlayer(){ return ytSlots[activeYtSlot].player; }
-function isActiveYtReady(){ return ytSlots[activeYtSlot].ready; }
-function preloadSlotKey(){ return activeYtSlot==='A' ? 'B' : 'A'; }
+let ytPlayer = null;
+let ytReady = false;
 
 /* ---------------------------------------------------------
    영상 소스 추상화 (유튜브 / SOOP VOD 클립)
@@ -1267,25 +1250,21 @@ function preloadSlotKey(){ return activeYtSlot==='A' ? 'B' : 'A'; }
       - "정지": iframe을 통째로 지워서 재생을 멈춤 (pause가 아니라 unload)
       - 음량 조절: 지원 안 됨 (SOOP 플레이어 자체 컨트롤을 써야 함)
 --------------------------------------------------------- */
+const YT_TARGET_ID = IS_OVERLAY ? 'yt-player-overlay' : 'yt-player';
 const SOOP_TARGET_ID = IS_OVERLAY ? 'soop-player-overlay' : 'soop-player';
 let currentVideoSource = null; // 'youtube' | 'soop' | null
 
 function setVideoSource(source){
   currentVideoSource = source;
+  const ytEl = document.getElementById(YT_TARGET_ID);
   const soopEl = document.getElementById(SOOP_TARGET_ID);
-  ['A','B'].forEach(key=>{
-    const el = YT_SLOT_IDS[key] && document.getElementById(YT_SLOT_IDS[key]);
-    if (el) el.style.display = (source==='youtube' && key===activeYtSlot) ? '' : 'none';
-  });
+  if (ytEl) ytEl.style.display = (source==='youtube') ? '' : 'none';
   if (soopEl) soopEl.style.display = (source==='soop') ? 'block' : 'none';
   // 다른 소스로 넘어갈 땐 이전 SOOP iframe을 완전히 지운다 - display:none만으로는
   // 백그라운드에서 소리가 계속 나올 수 있어서(다음 곡 넘어가도 이전 곡 소리가 남는 버그) 통째로 제거해야 함.
   if (source !== 'soop' && soopEl) soopEl.innerHTML = '';
   // 유튜브에서 SOOP(또는 다른 소스)로 넘어갈 때도 유튜브 오디오가 백그라운드에서 계속 나오지 않도록 확실히 멈춘다.
-  if (source !== 'youtube'){
-    const ap = activePlayer();
-    if (ap && ap.pauseVideo) ap.pauseVideo();
-  }
+  if (source !== 'youtube' && ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
 }
 
 function loadRoundVideo(song){
@@ -1306,86 +1285,34 @@ function loadRoundVideo(song){
     iframe.setAttribute('allowfullscreen', '');
     soopEl.appendChild(iframe);
   } else {
-    const preloadKey = preloadSlotKey();
-    const preload = ytSlots[preloadKey];
-    if (!IS_OVERLAY && preload.player && preload.ready && preload.loadedVideoId === song.videoId){
-      // 이미 미리 재생 중이던 슬롯을 그대로 화면 앞으로 꺼내 쓴다 (광고를 무음으로 이미 흘려보낸 상태일 확률이 높음)
-      const demotedKey = activeYtSlot;
-      activeYtSlot = preloadKey;
-      setVideoSource('youtube');
-      const ap = activePlayer();
-      if (ap.unMute) ap.unMute();
-      if (ap.setVolume) ap.setVolume(currentVolume);
-      if (ap.seekTo) ap.seekTo(song.startSec || 0, true);
-      if (ap.playVideo) ap.playVideo();
-      // 방금 화면 뒤로 물러난 슬롯이 배경에서 계속 소리를 내지 않도록 확실히 멈추고 무음 처리
-      const demoted = ytSlots[demotedKey].player;
-      if (demoted){
-        if (demoted.pauseVideo) demoted.pauseVideo();
-        if (demoted.mute) demoted.mute();
-      }
-      ytSlots[demotedKey].loadedVideoId = null;
-    } else {
-      // 미리 준비된 게 없으면(세션 첫 곡이거나, 순서를 건너뛴 경우) 지금 슬롯에 새로 로드
-      setVideoSource('youtube');
-      const ap = activePlayer();
-      if (ap && ap.loadVideoById){
-        if (ap.unMute) ap.unMute();
-        if (ap.setVolume) ap.setVolume(currentVolume);
-        ap.loadVideoById({ videoId: song.videoId, startSeconds: song.startSec || 0 });
-      }
-      ytSlots[activeYtSlot].loadedVideoId = song.videoId || null;
-    }
+    setVideoSource('youtube');
+    if (ytPlayer && ytPlayer.loadVideoById) ytPlayer.loadVideoById({ videoId: song.videoId, startSeconds: song.startSec || 0 });
   }
-  preloadNextSong();
 }
 
-// 다음 라운드에 나올 곡을 안 보이는 슬롯에 무음으로 미리 로드해서 재생해둔다.
-function preloadNextSong(){
-  if (IS_OVERLAY) return; // 오버레이는 다음 곡을 미리 알 수 없어서 예열 대상이 아님
-  if (!SONGS || SONGS.length < 2) return; // 문제가 1개뿐이면 예열할 "다음 곡"이 없음
-  const nextIndex = (currentSongIndex + 1) % SONGS.length;
-  const nextSong = SONGS[nextIndex];
-  if (!nextSong || nextSong.source === 'soop') return; // SOOP은 예열 대상 아님
-  const key = preloadSlotKey();
-  const slot = ytSlots[key];
-  if (!slot.player || !slot.ready || !slot.player.loadVideoById) return;
-  if (slot.loadedVideoId === nextSong.videoId) return; // 이미 예열 중/완료
-  slot.loadedVideoId = nextSong.videoId;
-  if (slot.player.mute) slot.player.mute();
-  slot.player.loadVideoById({ videoId: nextSong.videoId, startSeconds: nextSong.startSec || 0 });
-}
-
-// 다시듣기/정답 공개 시 "시작초로 되감아서 재생"에 해당하는 동작
 // 다시듣기/정답 공개 시 "시작초로 되감아서 재생"에 해당하는 동작
 function replayRoundVideo(song){
   if (!song) return;
-  const ap = activePlayer();
   if (song.source === 'soop'){
     loadRoundVideo(song); // SOOP는 seekTo가 없어 iframe을 통째로 다시 로드
-  } else if (ap && ap.seekTo){
-    ap.seekTo(song.startSec || 0, true);
-    ap.playVideo();
+  } else if (ytPlayer && ytPlayer.seekTo){
+    ytPlayer.seekTo(song.startSec || 0, true);
+    ytPlayer.playVideo();
   }
 }
 
 function pauseRoundVideo(){
-  const ap = activePlayer();
-  if (currentVideoSource==='youtube' && ap && ap.pauseVideo){
-    ap.pauseVideo();
+  if (currentVideoSource==='youtube' && ytPlayer && ytPlayer.pauseVideo){
+    ytPlayer.pauseVideo();
   } else if (currentVideoSource==='soop'){
     const soopEl = document.getElementById(SOOP_TARGET_ID);
     if (soopEl) soopEl.innerHTML = ''; // pause API가 없어 iframe을 지워서 정지시킴
   }
-  // 배경에서 다음 곡을 예열 중이던 슬롯도 같이 멈춰서, 화면을 벗어난 뒤에도 계속 재생되지 않게 한다.
-  const preload = ytSlots[preloadSlotKey()];
-  if (preload.player && preload.player.pauseVideo) preload.player.pauseVideo();
 }
 
 function setRoundVolume(v){
   // SOOP 임베드는 이쪽에서 음량 제어가 안 되고, 플레이어 자체 컨트롤을 써야 함
-  const ap = activePlayer();
-  if (ap && ap.setVolume) ap.setVolume(v);
+  if (ytPlayer && ytPlayer.setVolume) ytPlayer.setVolume(v);
 }
 
 function loadYT(){
@@ -1393,41 +1320,26 @@ function loadYT(){
   tag.src = "https://www.youtube.com/iframe_api";
   document.body.appendChild(tag);
 }
-function createYtSlotPlayer(key, targetId){
-  if (!targetId || !document.getElementById(targetId)) return;
-  ytSlots[key].player = new YT.Player(targetId, {
+window.onYouTubeIframeAPIReady = function(){
+  const targetId = IS_OVERLAY ? 'yt-player-overlay' : 'yt-player';
+  if (!document.getElementById(targetId)) return;
+  ytPlayer = new YT.Player(targetId, {
     height:'100%', width:'100%',
     playerVars:{ controls:0, modestbranding:1, rel:0, disablekb:1, fs:0 },
     events:{
-      'onReady': ()=>{
-        ytSlots[key].ready = true;
-        if (IS_OVERLAY) return;
-        if (key===activeYtSlot) ytSlots[key].player.setVolume(currentVolume);
-        else ytSlots[key].player.mute(); // 예열용 슬롯은 항상 무음 상태로 시작
-      },
-      'onError': (e)=>{ if(!IS_OVERLAY) handleYtError(e, key); }
+      'onReady': ()=>{ ytReady = true; if(!IS_OVERLAY) ytPlayer.setVolume(currentVolume); },
+      'onError': (e)=>{ if(!IS_OVERLAY) handleYtError(e); }
     }
   });
-}
-window.onYouTubeIframeAPIReady = function(){
-  createYtSlotPlayer('A', YT_SLOT_IDS.A);
-  if (YT_SLOT_IDS.B) createYtSlotPlayer('B', YT_SLOT_IDS.B);
 };
 loadYT();
 
 // 영상 소유자가 다른 사이트에서의 재생(임베드)을 막아둔 경우(101/150) 등 재생 불가한 곡은
 // 자동으로 건너뛴다. YouTube 데이터 API 키가 없어서 미리 걸러낼 수는 없고, 재생 시도 시점에
 // 감지해서 건너뛰는 방식이다.
-function handleYtError(e, slotKey){
+function handleYtError(e){
   const code = e && e.data;
   if (code !== 101 && code !== 150 && code !== 100 && code !== 2) return; // 임베드 차단/영상 없음/잘못된 ID만 처리
-  if (slotKey && slotKey !== activeYtSlot){
-    // 화면에 나오지도 않은 "예열용" 곡이 재생 불가였던 것 - 조용히 예열 표시만 지운다.
-    // 실제로 그 곡의 라운드가 오면 loadRoundVideo가 예열 슬롯을 못 써서 새로 로드를 시도하고,
-    // 그때 활성 슬롯에서 다시 같은 에러가 나면 정상적으로 건너뛰기 로직을 탄다.
-    ytSlots[slotKey].loadedVideoId = null;
-    return;
-  }
   console.warn('재생 불가 영상(에러코드 ' + code + '), 건너뜁니다:', SONGS[currentSongIndex] && SONGS[currentSongIndex].videoId);
   skipUnplayableSong();
 }
@@ -1460,24 +1372,12 @@ if (volumeSlider){
     currentVolume = Number(volumeSlider.value);
     document.getElementById('volume-value').textContent = currentVolume + '%';
     localStorage.setItem(VOLUME_STORAGE_KEY, String(currentVolume));
-    if (isActiveYtReady()) setRoundVolume(currentVolume);
+    if (ytReady) setRoundVolume(currentVolume);
   });
 }
 
 function initGame(){
   currentSongIndex = 0;
-  // 새 세션 시작 - 이전 세션에서 예열해뒀던 슬롯 상태가 남아있지 않도록 깨끗하게 초기화
-  if (!IS_OVERLAY){
-    activeYtSlot = 'A';
-    ['A','B'].forEach(key=>{
-      ytSlots[key].loadedVideoId = null;
-      const p = ytSlots[key].player;
-      if (key==='B' && p){
-        if (p.pauseVideo) p.pauseVideo();
-        if (p.mute) p.mute();
-      }
-    });
-  }
   updateRoundMeta();
   resetStageUI();
   // 싱글플레이는 재생 버튼을 누르지 않아도 3초 카운트다운 후 첫 문제가 자동으로 시작된다.
@@ -1509,12 +1409,10 @@ function coverVideoInstantly(coverEl){
 // 페이드가 끝난 직후 iframe에 아주 살짝 transform을 줬다 되돌려서 강제로 다시 그리게 한다.
 // 소리가 끊기지 않도록 display/reload 방식이 아니라 transform만 살짝 건드리는 방식을 쓴다.
 function forceRepaintYtIframe(){
-  const wrapperId = YT_SLOT_IDS[activeYtSlot];
-  const wrapper = wrapperId && document.getElementById(wrapperId);
-  const ap = activePlayer();
+  const wrapper = document.getElementById(YT_TARGET_ID);
   let iframe = null;
-  if (ap && ap.getIframe){
-    try { iframe = ap.getIframe(); } catch(e){}
+  if (ytPlayer && ytPlayer.getIframe){
+    try { iframe = ytPlayer.getIframe(); } catch(e){}
   }
   [wrapper, iframe].forEach(el=>{
     if (!el) return;
@@ -1547,7 +1445,10 @@ function scheduleYtRepaintAfterReveal(coverEl){
 }
 
 function resetStageUI(){
-  coverVideoInstantly(document.getElementById('video-cover'));
+  // 화면/텍스트 값만 바꾸는 가벼운 변경들을 먼저 다 끝내두고, 강제 리플로우가 들어가는
+  // coverVideoInstantly()는 맨 마지막에 실행한다. 순서가 반대였을 때는, 리플로우 시점에
+  // 브라우저가 중간 상태(예: "오답이에요" 문구가 아직 안 지워진 상태)를 한 프레임 그려버려서
+  // 화면이 깨졌다가 바뀌는 것처럼 보이는 경우가 있었다.
   document.getElementById('video-cover').classList.remove('soop-clickthrough');
   document.getElementById('reveal-banner').style.display='none';
   document.getElementById('stage-state').textContent = '재생 대기 중';
@@ -1571,6 +1472,7 @@ function resetStageUI(){
   if (GAME_MODE==='streaming' && selectedStreamer){
     db.ref(rankPath(selectedStreamer.id)).set(null);
   }
+  coverVideoInstantly(document.getElementById('video-cover'));
 }
 
 function toggleAnswerInputs(enabled){
@@ -1608,7 +1510,7 @@ function writeSessionState(patch){
 
 function startRound(){
   const song = SONGS[currentSongIndex];
-  if(song.source!=='soop' && !isActiveYtReady()){ alert('플레이어 로딩 중입니다. 잠시 후 다시 시도해주세요.'); return; }
+  if(song.source!=='soop' && !ytReady){ alert('플레이어 로딩 중입니다. 잠시 후 다시 시도해주세요.'); return; }
   document.getElementById('start-round-btn').disabled = true;
 
   loadRoundVideo(song);
@@ -1664,7 +1566,7 @@ let replayUsed = false;
 function replaySong(){
   const song = SONGS[currentSongIndex];
   if (replayUsed || !song) return;
-  if (song.source!=='soop' && (!isActiveYtReady() || !activePlayer())) return;
+  if (song.source!=='soop' && (!ytReady || !ytPlayer)) return;
   replayUsed = true;
   const replayBtn = document.getElementById('replay-btn');
   if (replayBtn){ replayBtn.disabled = true; replayBtn.textContent = '🔁 다시듣기 완료'; }
@@ -1821,7 +1723,7 @@ async function initOverlay(){
     applyPanelCollapse('rank', !!state.rankCollapsed, { panelId:'overlay-rank-panel', iconId:'__none__' });
     applyPanelCollapse('total', !!state.totalCollapsed, { panelId:'overlay-total-panel', iconId:'__none__' });
 
-    if (state.song && (state.song.videoId || state.song.clipId) && (state.song.source==='soop' || (isActiveYtReady() && activePlayer()))){
+    if (state.song && (state.song.videoId || state.song.clipId) && (state.song.source==='soop' || (ytReady && ytPlayer))){
       const key = (state.song.source||'youtube') + ':' + (state.song.videoId || state.song.clipId);
       if (key !== lastLoadedSongKey){
         lastLoadedSongKey = key;
