@@ -186,14 +186,6 @@
   }
   .reveal-banner .label{ font-size:12px; color:var(--accent-3); letter-spacing:2px; }
   .reveal-banner .answer{ font-family:'Black Han Sans'; font-size:26px; color:#fff; }
-  .ad-badge{
-    position:absolute; top:12px; right:12px; z-index:7;
-    display:none; align-items:center; gap:6px;
-    padding:6px 12px; border-radius:999px;
-    background:rgba(255,110,50,0.16); border:1px solid rgba(255,140,70,0.6);
-    color:#ffb27a; font-size:13px; font-weight:700;
-  }
-  .ad-badge.showing{ display:flex; }
 
   .panel{
     background:var(--bg-2); border:1px solid var(--line-accent); border-radius:var(--radius);
@@ -451,7 +443,6 @@
           <div class="stage-state" id="stage-state">재생 대기 중</div>
           <div class="stage-timer" id="stage-timer">--</div>
         </div>
-        <div class="ad-badge" id="ad-badge">📢 광고가 나오고 있어요</div>
         <div class="reveal-banner" id="reveal-banner" style="display:none;">
           <div class="label">정답</div>
           <div class="answer" id="reveal-answer-text">-</div>
@@ -1267,35 +1258,6 @@ function activePlayer(){ return ytSlots[activeYtSlot].player; }
 function isActiveYtReady(){ return ytSlots[activeYtSlot].ready; }
 function preloadSlotKey(){ return activeYtSlot==='A' ? 'B' : 'A'; }
 
-// 광고 재생 감지 (비공식 편법): 광고가 나오는 동안엔 getVideoData().video_id가 우리가 요청한
-// videoId와 다른 값(광고 자체의 영상ID)으로 바뀌는 경우가 많다는 걸 이용한 추측이다.
-// 유튜브 공식 문서에 없는 동작이라 100% 신뢰할 순 없지만, "광고가 나오고 있어요" 안내용으로는 충분하다.
-function setAdBadgeVisible(showing){
-  const badge = document.getElementById('ad-badge');
-  if (badge) badge.classList.toggle('showing', !!showing);
-}
-// 진단용: 콘솔에 window.__adDebug = true 를 입력하면, 실제 광고가 뜰 때 유튜브 플레이어가
-// getVideoData/getPlayerState/getDuration으로 무슨 값을 주는지 1초마다 콘솔에 찍힌다.
-// 이걸로 실제 광고 재생 중 값이 어떻게 바뀌는지 확인해서 감지 조건을 맞게 고칠 수 있다.
-setInterval(()=>{
-  if (IS_OVERLAY) return; // 안내 배지는 컨트롤 패널 화면에서만 표시
-  const slot = ytSlots[activeYtSlot];
-  if (currentVideoSource!=='youtube' || !slot.loadedVideoId || !slot.player || !slot.player.getVideoData) {
-    setAdBadgeVisible(false);
-    return;
-  }
-  let data, state, duration;
-  try {
-    data = slot.player.getVideoData();
-    state = slot.player.getPlayerState ? slot.player.getPlayerState() : null;
-    duration = slot.player.getDuration ? slot.player.getDuration() : null;
-  } catch(e){ return; }
-  if (window.__adDebug){
-    console.log('[ad-detect]', { expectedVideoId: slot.loadedVideoId, actualVideoId: data && data.video_id, state, duration, isAd: data.video_id !== slot.loadedVideoId });
-  }
-  setAdBadgeVisible(!!(data && data.video_id && data.video_id !== slot.loadedVideoId));
-}, 1000);
-
 /* ---------------------------------------------------------
    영상 소스 추상화 (유튜브 / SOOP VOD 클립)
    -- SOOP(vod.sooplive.com) 임베드는 유튜브 IFrame API 같은 postMessage 제어 API가
@@ -1374,7 +1336,6 @@ function loadRoundVideo(song){
       ytSlots[activeYtSlot].loadedVideoId = song.videoId || null;
     }
   }
-  setAdBadgeVisible(false); // 새 라운드 로드 직후엔 광고 배지를 일단 숨기고, 워처가 곧 실제 상태로 갱신함
   preloadNextSong();
 }
 
@@ -1395,44 +1356,16 @@ function preloadNextSong(){
 }
 
 // 다시듣기/정답 공개 시 "시작초로 되감아서 재생"에 해당하는 동작
-function forceReloadYtVideo(ap, song){
-  if (!ap || !ap.loadVideoById) return;
-  if (!IS_OVERLAY){
-    if (ap.unMute) ap.unMute();
-    if (ap.setVolume) ap.setVolume(currentVolume);
-  }
-  ap.loadVideoById({ videoId: song.videoId, startSeconds: song.startSec || 0 });
-  ytSlots[activeYtSlot].loadedVideoId = song.videoId;
-}
-
+// 다시듣기/정답 공개 시 "시작초로 되감아서 재생"에 해당하는 동작
 function replayRoundVideo(song){
   if (!song) return;
   const ap = activePlayer();
   if (song.source === 'soop'){
     loadRoundVideo(song); // SOOP는 seekTo가 없어 iframe을 통째로 다시 로드
-    return;
-  }
-  if (!ap) return;
-  // 정답 공개 시점에 광고가 재생 중이었으면 seekTo만으론 광고 구간 안에서만 움직이거나,
-  // 광고가 끝난 뒤 뒤늦게 0초부터 재생되어 정답 영상이 아예 안 뜨거나 늦게 뜨는 문제가 있었다.
-  // video_id 불일치 감지가 실제 광고에서 안 먹는 경우가 있어서(비공식 편법이라 신뢰도가 낮음),
-  // 우선 평소처럼 빠른 seekTo를 시도해두고, 0.6초 뒤에 정말 정답 영상이 재생 중인지 다시
-  // 확인해서 여전히 아니면 그때 확실하게 통째로 다시 로드하는 이중 안전장치를 둔다.
-  if (ap.seekTo){
+  } else if (ap && ap.seekTo){
     ap.seekTo(song.startSec || 0, true);
     ap.playVideo();
   }
-  setTimeout(()=>{
-    if (activePlayer() !== ap) return; // 그 사이 다음 라운드로 넘어갔으면 무시
-    let actualId = null, state = null;
-    try {
-      actualId = ap.getVideoData && ap.getVideoData().video_id;
-      state = ap.getPlayerState ? ap.getPlayerState() : null;
-    } catch(e){ return; }
-    const idMismatch = actualId && actualId !== song.videoId;
-    const notPlaying = state !== 1 && state !== 3; // 1=PLAYING, 3=BUFFERING 둘 다 아니면 뭔가 멈춰있는 상태
-    if (idMismatch || notPlaying) forceReloadYtVideo(ap, song);
-  }, 600);
 }
 
 function pauseRoundVideo(){
