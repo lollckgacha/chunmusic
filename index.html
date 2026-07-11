@@ -124,9 +124,6 @@
   }
   .streamer-card:hover{ transform:translateY(-3px); border-color:var(--mc, var(--accent)); }
   .streamer-card.selected{ border-color:var(--mc, var(--accent)); box-shadow:0 0 0 2px var(--mc, var(--accent)) inset; }
-  .streamer-card.insufficient{ opacity:0.55; }
-  .streamer-card.insufficient .avatar{ filter:grayscale(100%); }
-  .streamer-card.insufficient .mascot{ color:var(--danger); }
 
   /* ---------- 문제 수 선택 ---------- */
   .count-grid{ display:flex; flex-wrap:wrap; justify-content:center; gap:14px; margin-bottom:28px; }
@@ -759,15 +756,13 @@ function renderQuizMemberGrid(){
   const names = [...new Set(FULL_SONG_BANK.map(s=>s.memberName).filter(n=>n && n!=='단체'))];
   names.forEach(name=>{
     const meta = STREAMERS.find(s=>s.name===name);
-    const isInsufficient = INSUFFICIENT_SONG_MEMBERS.includes(name);
     const card = document.createElement('div');
-    card.className = 'streamer-card' + (isInsufficient ? ' insufficient' : '');
+    card.className = 'streamer-card';
     if (meta) card.style.setProperty('--mc', meta.color);
     card.onclick = ()=> chooseQuizMember(name, card);
     card.innerHTML = `
       <div class="avatar">${meta ? avatarHtml(meta) : name[0]}</div>
       <div class="sname">${name}</div>
-      ${isInsufficient ? '<div class="mascot">곡 부족</div>' : ''}
     `;
     grid.appendChild(card);
   });
