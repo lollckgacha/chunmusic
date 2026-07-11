@@ -1530,8 +1530,19 @@ function updateRoundMeta(){
   document.getElementById('round-index').textContent = `문제 ${currentSongIndex+1} / ${SONGS.length}`;
 }
 
+// video-cover는 opacity 트랜지션(.5s)이 걸려있어서, 단순히 클래스만 지우면 "완전히 가려짐"
+// 상태가 되기까지 0.5초 동안 서서히 불투명해진다 - 그 사이에 새 라운드 영상이 밑에서 바뀌면
+// 잠깐이지만 화면이 비쳐 보이는 문제가 있었다. 다시 가릴 때만은 트랜지션 없이 즉시 불투명하게 만든다.
+function coverVideoInstantly(coverEl){
+  if (!coverEl) return;
+  coverEl.style.transition = 'none';
+  coverEl.classList.remove('hidden-cover');
+  void coverEl.offsetHeight; // 강제 리플로우로 위 변경을 즉시 반영시킨 뒤에
+  coverEl.style.transition = ''; // 트랜지션을 다시 켠다 (다음 번 "정답 공개" 페이드 아웃은 그대로 부드럽게 동작)
+}
+
 function resetStageUI(){
-  document.getElementById('video-cover').classList.remove('hidden-cover');
+  coverVideoInstantly(document.getElementById('video-cover'));
   document.getElementById('video-cover').classList.remove('soop-clickthrough');
   document.getElementById('reveal-banner').style.display='none';
   document.getElementById('stage-state').textContent = '재생 대기 중';
@@ -1597,7 +1608,7 @@ function startRound(){
 
   loadRoundVideo(song);
   const coverEl = document.getElementById('video-cover');
-  coverEl.classList.remove('hidden-cover');
+  coverVideoInstantly(coverEl);
   coverEl.classList.toggle('soop-clickthrough', song.source==='soop');
   document.getElementById('reveal-banner').style.display='none';
 
@@ -1769,7 +1780,7 @@ async function initOverlay(){
     if (!state){
       document.getElementById('overlay-stage-state').textContent = '대기 중';
       document.getElementById('overlay-stage-timer').textContent = '--';
-      document.getElementById('overlay-video-cover').classList.remove('hidden-cover');
+      coverVideoInstantly(document.getElementById('overlay-video-cover'));
       document.getElementById('overlay-reveal-banner').style.display = 'none';
       return;
     }
@@ -1828,7 +1839,7 @@ async function initOverlay(){
       return;
     }
 
-    cover.classList.remove('hidden-cover');
+    coverVideoInstantly(cover);
     banner.style.display = 'none';
     stateLabel.textContent = labelMap[state.phase] || '진행 중';
 
