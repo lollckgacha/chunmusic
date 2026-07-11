@@ -157,6 +157,7 @@
     background:radial-gradient(600px 300px at 50% 40%, rgba(24,215,242,0.10), transparent 60%), #050608;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     transition:opacity .5s ease;
+    will-change:opacity; /* opacity 트랜지션 중 밑에 있는 유튜브 iframe이 검게 멈추는 렌더링 버그 완화용 */
   }
   .video-cover.hidden-cover{ opacity:0; pointer-events:none; }
   /* SOOP 클립은 자동재생이 안 될 수 있어서, 화면은 그대로 가린 채 클릭만 아래 iframe으로 통과시켜
@@ -1508,14 +1509,24 @@ function coverVideoInstantly(coverEl){
 // 페이드가 끝난 직후 iframe에 아주 살짝 transform을 줬다 되돌려서 강제로 다시 그리게 한다.
 // 소리가 끊기지 않도록 display/reload 방식이 아니라 transform만 살짝 건드리는 방식을 쓴다.
 function forceRepaintYtIframe(){
+  const wrapperId = YT_SLOT_IDS[activeYtSlot];
+  const wrapper = wrapperId && document.getElementById(wrapperId);
   const ap = activePlayer();
-  if (!ap || !ap.getIframe) return;
-  let el;
-  try { el = ap.getIframe(); } catch(e){ return; }
-  if (!el) return;
-  el.style.transform = 'translateZ(0)';
-  void el.offsetHeight;
-  el.style.transform = '';
+  let iframe = null;
+  if (ap && ap.getIframe){
+    try { iframe = ap.getIframe(); } catch(e){}
+  }
+  [wrapper, iframe].forEach(el=>{
+    if (!el) return;
+    // transform만으론 안 될 때가 있어서 opacity까지 같이 살짝 건드려서 리페인트를 강제한다.
+    const prevTransform = el.style.transform;
+    const prevOpacity = el.style.opacity;
+    el.style.transform = 'translateZ(0)';
+    el.style.opacity = '0.9999';
+    void el.offsetHeight; // 강제 리플로우
+    el.style.transform = prevTransform;
+    el.style.opacity = prevOpacity;
+  });
 }
 
 function scheduleYtRepaintAfterReveal(coverEl){
@@ -1524,7 +1535,12 @@ function scheduleYtRepaintAfterReveal(coverEl){
   const run = ()=>{
     if (done) return;
     done = true;
+    // 한 번으로 안 될 때가 있어서, 약간 시차를 두고 몇 번 더 시도한다 (검은 화면이 늦게
+    // 나타나거나 첫 리페인트 타이밍이 브라우저 페인트 사이클과 어긋나는 경우 대비).
     forceRepaintYtIframe();
+    setTimeout(forceRepaintYtIframe, 150);
+    setTimeout(forceRepaintYtIframe, 400);
+    setTimeout(forceRepaintYtIframe, 900);
   };
   coverEl.addEventListener('transitionend', run, { once:true });
   setTimeout(run, 600); // transitionend가 안 뜨는 환경(트랜지션이 이미 그 값이었던 경우 등)을 위한 안전장치
