@@ -1281,10 +1281,14 @@ function toggleAnswerInputs(enabled){
 
 // 정답 입력창에서 엔터로도 제출 가능하게
 document.getElementById('streamer-answer-input').addEventListener('keydown', (e)=>{
-  if (e.key==='Enter' && !e.target.disabled) streamerSubmitAnswer();
+  if (e.key!=='Enter') return;
+  e.stopPropagation(); // 이 엔터는 "정답 제출"용 - 아래 document 레벨의 "다음 곡" 리스너로 안 넘어가게 막음
+  if (!e.target.disabled) streamerSubmitAnswer();
 });
 document.getElementById('single-answer-input').addEventListener('keydown', (e)=>{
-  if (e.key==='Enter' && !e.target.disabled) singleSubmitAnswer();
+  if (e.key!=='Enter') return;
+  e.stopPropagation(); // 위와 동일한 이유
+  if (!e.target.disabled) singleSubmitAnswer();
 });
 
 // 정답 공개 화면에서 엔터를 누르면 "다음 곡"과 동일하게 다음 문제로 넘어간다.
@@ -1318,7 +1322,7 @@ function startRound(){
   writeSessionState({
     phase:'clip', currentIndex: currentSongIndex,
     // 오버레이 재생에 필요한 최소 정보만 공유하고, 정답(title/aliases)은 공개 전까지 보내지 않는다.
-    song:{ source: song.source, videoId: song.videoId, clipId: song.clipId, startSec: song.startSec },
+    song:{ source: song.source || 'youtube', videoId: song.videoId || '', clipId: song.clipId || '', startSec: song.startSec || 0 },
     phaseEndAt: serverNow() + GAME_CONFIG.answerLockSeconds*1000,
     phaseDurationSec: GAME_CONFIG.answerLockSeconds
   });
@@ -1412,7 +1416,7 @@ function revealAnswer(){
 
   writeSessionState({
     phase:'reveal',
-    song:{ source: song.source, videoId: song.videoId, clipId: song.clipId, startSec: song.startSec, title: song.title }
+    song:{ source: song.source || 'youtube', videoId: song.videoId || '', clipId: song.clipId || '', startSec: song.startSec || 0, title: song.title }
   });
 
   if (GAME_MODE==='streaming' && selectedStreamer){
