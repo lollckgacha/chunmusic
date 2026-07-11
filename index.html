@@ -1274,6 +1274,9 @@ function setAdBadgeVisible(showing){
   const badge = document.getElementById('ad-badge');
   if (badge) badge.classList.toggle('showing', !!showing);
 }
+// 진단용: 콘솔에 window.__adDebug = true 를 입력하면, 실제 광고가 뜰 때 유튜브 플레이어가
+// getVideoData/getPlayerState/getDuration으로 무슨 값을 주는지 1초마다 콘솔에 찍힌다.
+// 이걸로 실제 광고 재생 중 값이 어떻게 바뀌는지 확인해서 감지 조건을 맞게 고칠 수 있다.
 setInterval(()=>{
   if (IS_OVERLAY) return; // 안내 배지는 컨트롤 패널 화면에서만 표시
   const slot = ytSlots[activeYtSlot];
@@ -1281,10 +1284,17 @@ setInterval(()=>{
     setAdBadgeVisible(false);
     return;
   }
-  let data;
-  try { data = slot.player.getVideoData(); } catch(e){ return; }
+  let data, state, duration;
+  try {
+    data = slot.player.getVideoData();
+    state = slot.player.getPlayerState ? slot.player.getPlayerState() : null;
+    duration = slot.player.getDuration ? slot.player.getDuration() : null;
+  } catch(e){ return; }
+  if (window.__adDebug){
+    console.log('[ad-detect]', { expectedVideoId: slot.loadedVideoId, actualVideoId: data && data.video_id, state, duration, isAd: data.video_id !== slot.loadedVideoId });
+  }
   setAdBadgeVisible(!!(data && data.video_id && data.video_id !== slot.loadedVideoId));
-}, 600);
+}, 1000);
 
 /* ---------------------------------------------------------
    영상 소스 추상화 (유튜브 / SOOP VOD 클립)
