@@ -37,6 +37,21 @@ npm start
 곳에 "Node.js 서비스"로 배포하고, 환경변수에 `FIREBASE_SECRET`(과 필요하면 `FIREBASE_URL`)을
 설정하면 됩니다.
 
+### 잠들지 않게 하기 (무료 티어 필수)
+
+이 서버는 SOOP 웹소켓만 물고 있고 외부에서 HTTP 요청을 받을 일이 거의 없는 구조라,
+Render 같은 무료 "Web Service"는 "비활성"으로 판단해서 슬립시킬 수 있습니다. 그러면 채팅
+연동이 조용히 끊깁니다. 이를 막으려면:
+
+1. 이 서버는 `/`(루트)에 헬스체크용 HTTP 응답을 하도록 이미 되어 있습니다 (`server.js` 참고).
+2. **무료 "핑" 서비스로 그 주소를 주기적으로 호출**해주세요. 예:
+   - [UptimeRobot](https://uptimerobot.com) (무료, 5분 간격)
+   - [cron-job.org](https://cron-job.org) (무료, 원하는 간격 설정 가능)
+   - 배포된 주소(예: `https://chunmusic-soop-relay.onrender.com/`)를 5~10분마다 한 번씩
+     호출하도록 등록하면, Render 쪽에서 계속 "요청이 들어오는 서비스"로 인식해서 슬립에
+     걸리지 않습니다.
+3. 등록 후에도 몇 시간 뒤에 로그가 계속 살아있는지 한 번씩 확인해보는 게 좋습니다.
+
 ## 새 멤버가 추가되거나 SOOP 아이디가 바뀌면
 
 `server.js` 안의 `STREAMER_BJ_IDS` 객체를 `chunmusic/index.html`의 `STREAMERS` 배열과

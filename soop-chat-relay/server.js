@@ -97,3 +97,14 @@ console.log('SOOP 채팅 릴레이 서버 시작 - 12개 채널에 연결을 시
 for (const [streamerId, bjId] of Object.entries(STREAMER_BJ_IDS)) {
   connectStreamerChat(streamerId, bjId);
 }
+
+// Render 같은 "Web Service"는 포트를 열어야 정상 배포로 인식하고, 외부에서 주기적으로
+// 이 주소를 핑 해줘야 무료 티어의 "비활성 슬립"에 안 걸린다 (README의 "잠들지 않게 하기" 참고).
+import http from 'node:http';
+const PORT = process.env.PORT || 3000;
+http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+  res.end('천타버스 SOOP 채팅 릴레이 서버 - 정상 동작 중\n');
+}).listen(PORT, () => {
+  console.log(`헬스체크용 HTTP 서버 ${PORT}번 포트에서 대기 중`);
+});
