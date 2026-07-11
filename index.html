@@ -645,7 +645,7 @@ function resetDelayCalibScreen(){
 function startDelayCalibration(){
   const audio = document.getElementById('calib-audio');
   audio.volume = Number(document.getElementById('calib-volume-slider').value) / 100;
-  audio.currentTime = 0;
+  audio.currentTime = 13; // 13초 구간부터 재생 (곡 도입부보다 알아채기 쉬운 부분)
   audio.play().catch(e => console.warn('측정음 재생 실패:', e));
   calibStartTime = performance.now();
   document.getElementById('calib-start-btn').disabled = true;
