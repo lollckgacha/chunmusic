@@ -13,6 +13,8 @@
 // chat_relay/{streamerId}/messages 경로에 push한다. chunmusic/index.html의
 // FirebaseRelayChatSource가 바로 이 경로를 구독하도록 이미 만들어져 있다.
 
+import 'dotenv/config'; // .env 파일을 process.env로 읽어들임 (이게 없으면 .env를 만들어도 Node가 무시함)
+
 import { SoopChatEvent, SoopClient } from 'soop-extension';
 
 const FIREBASE_URL = (process.env.FIREBASE_URL || 'https://dongpa2026-2fda5-default-rtdb.asia-southeast1.firebasedatabase.app').replace(/\/$/, '');
