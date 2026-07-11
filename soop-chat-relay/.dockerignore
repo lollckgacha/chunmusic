@@ -1,0 +1,5 @@
+node_modules
+.env
+.env.example
+README.md
+릴레이_서버_실행.bat

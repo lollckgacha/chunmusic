@@ -1,0 +1,17 @@
+# fly launch 실행 시 자동으로 감지되는 설정 파일입니다.
+# app 이름은 전세계에서 고유해야 하므로, `fly launch` 실행 중 원하는 이름으로 바꾸라고 물어보면 그때 정하면 됩니다.
+app = "chunmusic-soop-relay"
+primary_region = "nrt"  # 도쿄 - 한국에서 가장 가까운 리전
+
+[build]
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = false   # 중요: false로 둬야 트래픽이 없어도 서버가 안 멈춤 (Render의 슬립 문제 재현 방지)
+  auto_start_machines = true
+  min_machines_running = 1     # 항상 최소 1대는 켜져 있도록 강제
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

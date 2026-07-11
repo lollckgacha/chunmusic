@@ -33,15 +33,50 @@ npm start
 ## 배포
 
 이 서버는 채팅을 실시간으로 계속 받아야 하므로 **상시 구동되는 서버**에 올려야 합니다
-(Vercel/Netlify 같은 서버리스/함수형 호스팅은 맞지 않습니다). Render, Railway, Fly.io 같은
-곳에 "Node.js 서비스"로 배포하고, 환경변수에 `FIREBASE_SECRET`(과 필요하면 `FIREBASE_URL`)을
-설정하면 됩니다.
+(Vercel/Netlify 같은 서버리스/함수형 호스팅은 맞지 않습니다).
 
-### 잠들지 않게 하기 (무료 티어 필수)
+### Fly.io (추천 - 무료 티어에서도 안 잠듦)
 
-이 서버는 SOOP 웹소켓만 물고 있고 외부에서 HTTP 요청을 받을 일이 거의 없는 구조라,
-Render 같은 무료 "Web Service"는 "비활성"으로 판단해서 슬립시킬 수 있습니다. 그러면 채팅
-연동이 조용히 끊깁니다. 이를 막으려면:
+이 폴더에 `Dockerfile`, `.dockerignore`, `fly.toml`이 이미 준비되어 있습니다.
+로컬에 Docker가 없어도 됩니다 - `fly deploy`는 Fly의 원격 빌더가 대신 이미지를 빌드해줍니다.
+
+```bash
+# 1) flyctl 설치 (최초 1회) - https://fly.io/docs/hands-on/install-flyctl/
+#    Windows PowerShell:
+#    powershell -Command "iwr https://fly.io/install.ps1 -useb | iex"
+
+# 2) 로그인 (가입은 웹사이트에서 미리 해두기)
+fly auth login
+
+# 3) soop-chat-relay 폴더에서 실행
+cd soop-chat-relay
+fly launch --no-deploy
+#    - "An existing fly.toml file was found" → 기존 설정 사용(Yes)
+#    - 앱 이름: 원하는 이름 입력 (전세계에서 고유해야 함, 겹치면 다른 이름 제안됨)
+#    - 리전: 기본값(nrt, 도쿄) 그대로 두면 됨
+#    - Postgres/Redis 등 추가 여부는 전부 No
+
+# 4) 환경변수(시크릿) 등록 - apps-script-songlist.gs.txt 의 FIREBASE_SECRET과 동일한 값
+fly secrets set FIREBASE_SECRET=여기에_실제_시크릿_값
+
+# 5) 배포
+fly deploy
+```
+
+배포되면 `fly logs` 명령으로 실시간 로그를 볼 수 있고, `https://<앱이름>.fly.dev/` 로 헬스체크
+주소가 생깁니다. `fly.toml`에 이미 `auto_stop_machines = false`, `min_machines_running = 1`을
+넣어뒀기 때문에 별도의 "안 잠들게 핑 보내기" 설정 없이도 서버가 항상 켜져 있습니다.
+
+**서버를 새로고침하려면(코드 수정 후 재배포)**: `soop-chat-relay` 폴더에서 `fly deploy`만
+다시 실행하면 됩니다.
+
+### Render (대안, 무료지만 비활성 시 슬립됨)
+
+Render, Railway 같은 곳에도 "Node.js 서비스"로 배포할 수 있습니다. 환경변수에
+`FIREBASE_SECRET`(과 필요하면 `FIREBASE_URL`)을 설정하면 됩니다.
+
+Render 무료 "Web Service"는 몇 분간 비활성이면 슬립되어 채팅 연동이 조용히 끊깁니다. 이를
+막으려면:
 
 1. 이 서버는 `/`(루트)에 헬스체크용 HTTP 응답을 하도록 이미 되어 있습니다 (`server.js` 참고).
 2. **무료 "핑" 서비스로 그 주소를 주기적으로 호출**해주세요. 예:
