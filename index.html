@@ -391,6 +391,14 @@
     <div class="feedback" id="calib-result-text" style="text-align:center; margin-top:14px; font-size:16px;"></div>
   </div>
 
+  <div class="panel" style="max-width:480px; margin:0 auto 24px;">
+    <label style="font-size:14px; color:var(--ink-dim);">시청자 닉네임 표시</label>
+    <div class="control-row" style="margin-top:10px;">
+      <button class="btn" id="nickname-mode-real-btn" onclick="setNicknameDisplayMode(true)" style="flex:1; padding:10px 16px; font-size:14px;">실제 닉네임</button>
+      <button class="btn ghost" id="nickname-mode-anon-btn" onclick="setNicknameDisplayMode(false)" style="flex:1; padding:10px 16px; font-size:14px;">익명 (시청자1, 시청자2...)</button>
+    </div>
+  </div>
+
   <audio id="calib-audio" src="chunta.mp3" loop preload="none"></audio>
 
   <div class="back-row" style="gap:12px;">
@@ -597,9 +605,35 @@ const GAME_CONFIG = {
 let calibratedAnswerLockSeconds = null; // null이면 기본값 사용
 let calibStartTime = null;
 
+// 시청자 닉네임을 실명 그대로 보여줄지, "시청자1/시청자2..."로 익명화할지 선택 (친목/네임드화 방지용).
+// true(기본값)면 실제 닉네임, false면 아래 resolveDisplayNickname()이 userId별로 고정된 익명 라벨을 부여한다.
+let showViewerNicknames = true;
+let anonNicknameMap = {};
+let anonNicknameCounter = 0;
+
+function setNicknameDisplayMode(showReal){
+  showViewerNicknames = showReal;
+  document.getElementById('nickname-mode-real-btn').className = showReal ? 'btn' : 'btn ghost';
+  document.getElementById('nickname-mode-anon-btn').className = showReal ? 'btn ghost' : 'btn';
+}
+
+// 정답 판정 시점에 이 함수를 통해 표시용 닉네임을 얻는다 - 결과를 랭킹/RTDB에 그대로 저장하므로
+// 오버레이 화면도 별도 처리 없이 동일한 표시 방식을 따르게 된다.
+function resolveDisplayNickname(userId, nickname){
+  if (showViewerNicknames) return nickname;
+  if (!anonNicknameMap[userId]){
+    anonNicknameCounter += 1;
+    anonNicknameMap[userId] = '시청자' + anonNicknameCounter;
+  }
+  return anonNicknameMap[userId];
+}
+
 function resetDelayCalibScreen(){
   calibratedAnswerLockSeconds = null;
   calibStartTime = null;
+  setNicknameDisplayMode(true);
+  anonNicknameMap = {};
+  anonNicknameCounter = 0;
   const audio = document.getElementById('calib-audio');
   if (audio){ audio.pause(); audio.currentTime = 0; }
   document.getElementById('calib-start-btn').disabled = false;
@@ -1131,16 +1165,17 @@ function handleIncomingChat(user, text){
   const isCorrect = getAnswerAliases(song).some(a => normalize(a) === guess);
 
   if(isCorrect){
+    const displayNickname = resolveDisplayNickname(user.id, user.nickname);
     const points = pointsForRankIndex(rankEntries.length);
-    const entry = { nickname:user.nickname, time: ((performance.now()-roundStartTime)/1000).toFixed(1), points };
+    const entry = { nickname:displayNickname, time: ((performance.now()-roundStartTime)/1000).toFixed(1), points };
     rankEntries.push(entry);
     renderRanking(rankEntries);
 
     if (GAME_MODE==='streaming' && selectedStreamer){
       db.ref(rankPath(selectedStreamer.id)).push(entry);
 
-      const prev = totalScores[user.id] || { nickname:user.nickname, score:0, correctCount:0 };
-      const updated = { nickname:user.nickname, score: prev.score + points, correctCount: prev.correctCount + 1 };
+      const prev = totalScores[user.id] || { nickname:displayNickname, score:0, correctCount:0 };
+      const updated = { nickname:displayNickname, score: prev.score + points, correctCount: prev.correctCount + 1 };
       totalScores[user.id] = updated;
       renderTotals(Object.values(totalScores), 'total-list', 'total-empty');
       db.ref(totalsPath(selectedStreamer.id) + '/' + user.id).set(updated);
