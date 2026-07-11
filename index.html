@@ -1651,8 +1651,11 @@ function unlockAnswering(){
   if (replayBtn) replayBtn.disabled = replayUsed;
   // 엔터로 다음 문제로 넘어온 경우 입력칸이 활성화되기만 하고 포커스는 안 잡혀서, 클릭을
   // 한 번 더 해야 입력이 되는 문제가 있었다 - 여기서 명시적으로 포커스를 준다.
+  // preventScroll을 안 주면, 정답 공개 배너/커버 등 여러 요소가 동시에 바뀌는 순간에
+  // 브라우저가 이 입력칸을 화면에 보이게 하려고 스크롤을 튕겨서 화면이 잠깐 깨져 보이는
+  // 문제가 있었다.
   const inputToFocus = document.getElementById(GAME_MODE==='single' ? 'single-answer-input' : 'streamer-answer-input');
-  if (inputToFocus) inputToFocus.focus();
+  if (inputToFocus) inputToFocus.focus({ preventScroll: true });
   writeSessionState({ phase:'awaiting' });
 }
 
