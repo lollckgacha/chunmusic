@@ -972,7 +972,6 @@ function avatarHtml(s){
     card.innerHTML = `
       <div class="avatar">${avatarHtml(s)}</div>
       <div class="sname">${s.name}</div>
-      <div class="mascot">${s.mascot}</div>
       ${s.channelUrl ? `<a class="channel-link" href="${s.channelUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">방송 바로가기 ↗</a>` : ''}
     `;
     grid.appendChild(card);
