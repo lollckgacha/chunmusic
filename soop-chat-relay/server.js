@@ -15,6 +15,12 @@
 
 import 'dotenv/config'; // .env 파일을 process.env로 읽어들임 (이게 없으면 .env를 만들어도 Node가 무시함)
 
+// Render 같은 컨테이너 호스팅에서 Node의 내장 fetch가 Firebase 쪽으로 "fetch failed"만 던지고
+// 실패하는 경우가 있다 - 컨테이너 네트워크가 IPv6 주소로 먼저 연결을 시도하다 막히는 흔한 문제.
+// DNS 조회 순서를 IPv4 우선으로 강제해서 우회한다. (로컬 PC에서는 원래도 잘 되던 것과 대비됨)
+import dns from 'node:dns';
+dns.setDefaultResultOrder('ipv4first');
+
 import { SoopChatEvent, SoopClient } from 'soop-extension';
 
 const FIREBASE_URL = (process.env.FIREBASE_URL || 'https://dongpa2026-2fda5-default-rtdb.asia-southeast1.firebasedatabase.app').replace(/\/$/, '');
@@ -53,7 +59,8 @@ async function pushChatMessage(streamerId, entry) {
       console.error(`[${streamerId}] Firebase 응답 오류: ${res.status} ${await res.text()}`);
     }
   } catch (e) {
-    console.error(`[${streamerId}] Firebase 전송 실패:`, e.message);
+    // e.cause에 실제 네트워크 에러(ENOTFOUND, ECONNREFUSED 등)가 들어있는 경우가 많아서 같이 찍는다.
+    console.error(`[${streamerId}] Firebase 전송 실패:`, e.message, e.cause || '');
   }
 }
 
