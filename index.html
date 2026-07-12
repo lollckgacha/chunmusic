@@ -993,7 +993,7 @@ async function selectStreamer(streamer, cardEl){
       document.getElementById('streamer-submit-row').style.display='flex';
       document.getElementById('single-answer-row').classList.remove('active');
       document.getElementById('rank-panel').style.display='flex';
-      document.getElementById('single-score-panel').style.display='none';
+      document.getElementById('single-score-panel').style.display='flex';
       const badgeRow = document.getElementById('streamer-badge-row');
       badgeRow.style.display='flex';
       badgeRow.style.setProperty('--mc', streamer.color);
@@ -1006,8 +1006,9 @@ async function selectStreamer(streamer, cardEl){
       renderTotals([], 'total-list', 'total-empty');
       document.getElementById('total-panel').style.display='flex';
       db.ref(totalsPath(streamer.id)).set(null);
-      // 스트리머 본인의 정답 성적도 결과 화면에 보여주기 위해 세션 시작 시 초기화한다.
+      // 스트리머 본인의 정답 성적을 진행 중에도, 결과 화면에도 보여주기 위해 세션 시작 시 초기화한다.
       singleStats = { total:0, correct:0 };
+      renderSingleScore();
 
       // 닉네임 패널 접힘 상태도 새 세션 기준으로 초기화(펼침)한다.
       panelCollapsed.rank = false;
@@ -1556,8 +1557,12 @@ function streamerSubmitAnswer(){
   const song = SONGS[currentSongIndex];
   const correct = getAnswerAliases(song).some(a=>normalize(a)===normalize(val));
   document.getElementById('streamer-submit-row').style.display = 'none';
+  const fb = document.getElementById('feedback-line');
+  fb.textContent = correct ? '정답입니다! 🎉' : '아쉽지만 오답이에요';
+  fb.className = 'feedback ' + (correct?'correct':'wrong');
   singleStats.total += 1;
   if (correct) singleStats.correct += 1;
+  renderSingleScore();
   finalizeAnswer();
 }
 
