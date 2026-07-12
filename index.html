@@ -138,8 +138,24 @@
   .loading-line{ text-align:center; color:var(--accent-3); font-size:14px; min-height:20px; }
 
   /* ---------- 게임 화면 ---------- */
-  .game-wrap{ display:grid; grid-template-columns:1fr 300px; gap:22px; }
-  @media (max-width:860px){ .game-wrap{ grid-template-columns:1fr; } }
+  /* 문제 영상+답 입력(중앙)을 기준으로 진행 현황(좌상단)/정답자 랭킹(우상단)을 양옆에 배치한다.
+     align-items:start로 각 칸 안에서 내용이 세로로 늘어나지 않고 위쪽에 붙어있게 한다. */
+  .game-wrap{
+    display:grid;
+    grid-template-columns: 220px minmax(0,1fr) 300px;
+    grid-template-areas: "left center right";
+    gap:22px;
+    align-items:start;
+  }
+  .game-wrap .col-left{ grid-area:left; }
+  .game-wrap .col-center{ grid-area:center; }
+  .game-wrap .col-right{ grid-area:right; }
+  @media (max-width:1100px){
+    .game-wrap{
+      grid-template-columns:1fr;
+      grid-template-areas: "center" "left" "right";
+    }
+  }
   /* 정답자가 많아져서 랭킹 목록이 길어져도 페이지 전체가 아래로 밀리지 않도록,
      우측 패널 묶음 자체를 화면 높이에 맞춰 고정하고 내부에서만 스크롤되게 한다. */
   .side-panels{
@@ -147,7 +163,7 @@
     max-height:calc(100vh - 40px);
     overflow-y:auto;
   }
-  @media (max-width:860px){ .side-panels{ position:static; max-height:none; overflow-y:visible; } }
+  @media (max-width:1100px){ .side-panels{ position:static; max-height:none; overflow-y:visible; } }
   .stage{
     background:#000; border-radius:var(--radius); overflow:hidden; position:relative;
     aspect-ratio:16/9; box-shadow:var(--shadow); border:1px solid var(--line-accent);
@@ -427,8 +443,19 @@
   </div>
 
   <div class="game-wrap">
-    <!-- 좌측: 무대 + 컨트롤 패널 -->
-    <div>
+    <!-- 좌측 상단: 진행 현황 -->
+    <div class="col-left">
+      <div class="panel" id="single-score-panel" style="display:none;">
+        <h4>진행 현황</h4>
+        <div class="score-board">
+          <div class="score-box"><div class="score-val" id="single-score-total">0</div><div class="score-lbl">문제수</div></div>
+          <div class="score-box"><div class="score-val correct" id="single-score-correct">0</div><div class="score-lbl">정답수</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 중앙: 무대 + 컨트롤 패널 -->
+    <div class="col-center">
       <div class="stage">
         <div id="yt-player"></div>
         <div id="soop-player" style="position:absolute; inset:0; display:none;"></div>
@@ -479,18 +506,10 @@
           채팅 연동: SOOP 실시간 채팅 릴레이(soop-chat-relay)에 연결됩니다. 릴레이 서버가 켜져있지 않으면 채팅이 들어오지 않습니다.
         </div>
       </div>
-
-      <div class="panel" id="single-score-panel" style="display:none; margin-top:16px;">
-        <h4>진행 현황</h4>
-        <div class="score-board">
-          <div class="score-box"><div class="score-val" id="single-score-total">0</div><div class="score-lbl">문제수</div></div>
-          <div class="score-box"><div class="score-val correct" id="single-score-correct">0</div><div class="score-lbl">정답수</div></div>
-        </div>
-      </div>
     </div>
 
-    <!-- 우측: 정답자 랭킹 -->
-    <div class="side-panels">
+    <!-- 우측 상단: 정답자 랭킹 -->
+    <div class="col-right side-panels">
       <div class="panel" id="rank-panel">
         <div class="panel-header" onclick="togglePanelCollapse('rank')">
           <h4>정답자 랭킹 (이번 문제)</h4>
