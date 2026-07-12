@@ -41,9 +41,6 @@ const STREAMER_BJ_IDS = {
   plli: 'plincess',
 };
 
-const RECONNECT_AFTER_ERROR_MS = 30000; // 연결 실패(방송 종료 등) 시 재시도 간격
-const RECONNECT_AFTER_CLOSE_MS = 10000; // 정상 연결 후 끊겼을 때 재시도 간격
-
 async function pushChatMessage(streamerId, entry) {
   const url = `${FIREBASE_URL}/chat_relay/${streamerId}/messages.json?auth=${FIREBASE_SECRET}`;
   try {
@@ -75,12 +72,13 @@ function connectStreamerChat(streamerId, bjId) {
 
   // ⚠️ 아래 error/close 이벤트명은 soop-extension 실제 구현과 다를 수 있다 (문서로 직접
   // 확인 못 함). 콘솔에 예상과 다른 로그가 뜨면 이 부분부터 의심할 것.
+  // 재연결은 일부러 안 한다 - 프로그램을 켤 때 그 순간 방송 중인 스트리머만 확인하고,
+  // 이후에 끊기거나 새로 방송을 시작한 스트리머는 사용자가 직접 다시 실행해서 잡는 방식.
   chat.on('error', (err) => {
     console.error(`[${streamerId}] 채팅 연결 오류:`, err && err.message ? err.message : err);
   });
   chat.on('close', () => {
-    console.warn(`[${streamerId}] 연결이 끊겼습니다. ${RECONNECT_AFTER_CLOSE_MS / 1000}초 후 재연결 시도`);
-    setTimeout(() => connectStreamerChat(streamerId, bjId), RECONNECT_AFTER_CLOSE_MS);
+    console.warn(`[${streamerId}] 연결이 끊겼습니다. (자동 재연결 안 함 - 다시 잡으려면 서버를 재시작하세요)`);
   });
 
   chat.connect()
@@ -89,11 +87,10 @@ function connectStreamerChat(streamerId, bjId) {
     })
     .catch((err) => {
       console.error(`⚠️ [${streamerId}] 연결 실패 (방송 중이 아니거나 bjId가 틀렸을 수 있음):`, err.message);
-      setTimeout(() => connectStreamerChat(streamerId, bjId), RECONNECT_AFTER_ERROR_MS);
     });
 }
 
-console.log('SOOP 채팅 릴레이 서버 시작 - 12개 채널에 연결을 시도합니다...');
+console.log('SOOP 채팅 릴레이 서버 시작 - 실행 시점에 방송 중인 채널만 연결을 시도합니다 (이후 자동 재시도 없음)...');
 for (const [streamerId, bjId] of Object.entries(STREAMER_BJ_IDS)) {
   connectStreamerChat(streamerId, bjId);
 }
