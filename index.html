@@ -140,6 +140,14 @@
   /* ---------- 게임 화면 ---------- */
   .game-wrap{ display:grid; grid-template-columns:1fr 300px; gap:22px; }
   @media (max-width:860px){ .game-wrap{ grid-template-columns:1fr; } }
+  /* 정답자가 많아져서 랭킹 목록이 길어져도 페이지 전체가 아래로 밀리지 않도록,
+     우측 패널 묶음 자체를 화면 높이에 맞춰 고정하고 내부에서만 스크롤되게 한다. */
+  .side-panels{
+    position:sticky; top:20px;
+    max-height:calc(100vh - 40px);
+    overflow-y:auto;
+  }
+  @media (max-width:860px){ .side-panels{ position:static; max-height:none; overflow-y:visible; } }
   .stage{
     background:#000; border-radius:var(--radius); overflow:hidden; position:relative;
     aspect-ratio:16/9; box-shadow:var(--shadow); border:1px solid var(--line-accent);
@@ -474,7 +482,7 @@
     </div>
 
     <!-- 우측: 정답자 랭킹 -->
-    <div>
+    <div class="side-panels">
       <div class="panel" id="single-score-panel" style="display:none;">
         <h4>진행 현황</h4>
         <div class="score-board">
