@@ -1533,7 +1533,10 @@ function replaySong(){
 }
 
 function runCountdown(seconds, label, onDone){
-  let remain = seconds;
+  // 방송 딜레이 보정값은 소수점 단위(예: 2.5초)로 측정될 수 있는데, 그대로 쓰면 1초씩 빼는
+  // 카운트다운이 "2.5 → 1.5 → 0.5"처럼 어색하게 표시되고 실제 대기 시간도 다음 정수초까지
+  // 밀려서 늘어난다. 초 단위로만 세도록 미리 올림 처리한다 (방송 딜레이를 덜 커버하지 않게).
+  let remain = Math.ceil(seconds);
   document.getElementById('stage-state').textContent = label;
   document.getElementById('stage-timer').textContent = remain;
   const timer = setInterval(()=>{
