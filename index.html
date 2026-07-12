@@ -1561,21 +1561,22 @@ function replaySong(){
 }
 
 function runCountdown(seconds, label, onDone){
-  // 방송 딜레이 보정값은 소수점 단위(예: 2.5초)로 측정될 수 있는데, 그대로 쓰면 1초씩 빼는
-  // 카운트다운이 "2.5 → 1.5 → 0.5"처럼 어색하게 표시되고 실제 대기 시간도 다음 정수초까지
-  // 밀려서 늘어난다. 초 단위로만 세도록 미리 올림 처리한다 (방송 딜레이를 덜 커버하지 않게).
-  let remain = Math.ceil(seconds);
+  // 방송 딜레이 보정값은 소수점 단위(예: 3.6초)로 측정될 수 있다. 화면엔 정수만 보여주되,
+  // 실제 대기 시간은 측정값 그대로 정확히 지키도록 목표 시각(endAt)을 기준으로 계산한다.
+  // (이전엔 1초씩 통째로 빼는 방식이라 3.6초짜리가 실제로는 4초 대기하게 되는 문제가 있었다.)
+  const endAt = performance.now() + Math.max(0, seconds) * 1000;
   document.getElementById('stage-state').textContent = label;
-  document.getElementById('stage-timer').textContent = remain;
-  const timer = setInterval(()=>{
-    remain -= 1;
-    if(remain <= 0){
+  const tick = ()=>{
+    const remainMs = endAt - performance.now();
+    if (remainMs <= 0){
       clearInterval(timer);
       onDone();
-    } else {
-      document.getElementById('stage-timer').textContent = remain;
+      return;
     }
-  }, 1000);
+    document.getElementById('stage-timer').textContent = Math.ceil(remainMs / 1000);
+  };
+  tick();
+  const timer = setInterval(tick, 200);
 }
 
 function streamerSubmitAnswer(){
