@@ -502,13 +502,20 @@
   </div>
 </div>
 
-<!-- ============ 4.5. 싱글플레이 결과 화면 ============ -->
+<!-- ============ 4.5. 결과 화면 (싱글플레이 / 스트리밍 공용) ============ -->
 <div class="screen" id="screen-results">
   <div style="text-align:center; padding:60px 20px;">
     <h2 class="display">결과</h2>
     <div class="score-board" style="margin:30px 0;">
       <div class="score-box"><div class="score-val" id="results-total">0</div><div class="score-lbl">문제수</div></div>
       <div class="score-box"><div class="score-val correct" id="results-correct">0</div><div class="score-lbl">정답수</div></div>
+    </div>
+    <div class="panel" id="results-viewer-top3-panel" style="max-width:420px; margin:0 auto 24px; text-align:left; display:none;">
+      <div class="panel-header">
+        <h4>🏆 시청자 종합 순위 TOP 3</h4>
+      </div>
+      <ul class="rank-list" id="results-viewer-top3-list"></ul>
+      <div class="empty-note" id="results-viewer-top3-empty">아직 집계된 점수가 없습니다</div>
     </div>
     <button class="btn" onclick="quitToTitle()">🏠 메인화면으로</button>
   </div>
@@ -999,6 +1006,8 @@ async function selectStreamer(streamer, cardEl){
       renderTotals([], 'total-list', 'total-empty');
       document.getElementById('total-panel').style.display='flex';
       db.ref(totalsPath(streamer.id)).set(null);
+      // 스트리머 본인의 정답 성적도 결과 화면에 보여주기 위해 세션 시작 시 초기화한다.
+      singleStats = { total:0, correct:0 };
 
       // 닉네임 패널 접힘 상태도 새 세션 기준으로 초기화(펼침)한다.
       panelCollapsed.rank = false;
@@ -1149,11 +1158,12 @@ function handleIncomingChat(user, text){
   }
 }
 
-function renderTotals(entries, targetListId, targetEmptyId){
+function renderTotals(entries, targetListId, targetEmptyId, maxCount){
   const list = document.getElementById(targetListId);
   const empty = document.getElementById(targetEmptyId);
   if (!list) return;
-  const sorted = (entries || []).slice().sort((a,b)=> b.score - a.score);
+  let sorted = (entries || []).slice().sort((a,b)=> b.score - a.score);
+  if (maxCount) sorted = sorted.slice(0, maxCount);
   list.innerHTML = '';
   if(sorted.length===0){ if(empty) empty.style.display='block'; return; }
   if(empty) empty.style.display='none';
@@ -1540,7 +1550,11 @@ function runCountdown(seconds, label, onDone){
 function streamerSubmitAnswer(){
   const val = document.getElementById('streamer-answer-input').value.trim();
   if(!val) return;
+  const song = SONGS[currentSongIndex];
+  const correct = getAnswerAliases(song).some(a=>normalize(a)===normalize(val));
   document.getElementById('streamer-submit-row').style.display = 'none';
+  singleStats.total += 1;
+  if (correct) singleStats.correct += 1;
   finalizeAnswer();
 }
 
@@ -1598,8 +1612,8 @@ function revealAnswer(){
 }
 
 function nextRound(){
-  // 싱글플레이는 정한 문제 수를 다 풀면 다시 처음으로 돌아가지 않고 결과 화면으로 마무리한다.
-  if (GAME_MODE === 'single' && currentSongIndex + 1 >= SONGS.length){
+  // 정한 문제 수를 다 풀면 (모드 상관없이) 다시 처음으로 돌아가지 않고 결과 화면으로 마무리한다.
+  if (currentSongIndex + 1 >= SONGS.length){
     showResultsScreen();
     return;
   }
@@ -1613,6 +1627,16 @@ function nextRound(){
 function showResultsScreen(){
   document.getElementById('results-total').textContent = singleStats.total;
   document.getElementById('results-correct').textContent = singleStats.correct;
+  const top3Panel = document.getElementById('results-viewer-top3-panel');
+  if (GAME_MODE === 'streaming'){
+    top3Panel.style.display = 'block';
+    renderTotals(Object.values(totalScores), 'results-viewer-top3-list', 'results-viewer-top3-empty', 3);
+  } else {
+    top3Panel.style.display = 'none';
+  }
+  if (GAME_MODE==='streaming' && selectedStreamer){
+    writeSessionState({ phase:'idle', song:null, phaseEndAt:null, phaseDurationSec:null, replayAt:null });
+  }
   goScreen('results');
 }
 
