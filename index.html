@@ -159,11 +159,10 @@
   /* 정답자가 많아져서 랭킹 목록이 길어져도 페이지 전체가 아래로 밀리지 않도록,
      우측 패널 묶음 자체를 화면 높이에 맞춰 고정하고 내부에서만 스크롤되게 한다. */
   .side-panels{
-    position:sticky; top:20px;
     max-height:calc(100vh - 40px);
     overflow-y:auto;
   }
-  @media (max-width:1100px){ .side-panels{ position:static; max-height:none; overflow-y:visible; } }
+  @media (max-width:1100px){ .side-panels{ max-height:none; overflow-y:visible; } }
   .stage{
     background:#000; border-radius:var(--radius); overflow:hidden; position:relative;
     aspect-ratio:16/9; box-shadow:var(--shadow); border:1px solid var(--line-accent);
