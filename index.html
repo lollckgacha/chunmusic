@@ -987,10 +987,14 @@ function renderCountScreen(sourceSongs, backScreenName, onConfirm){
     btn.disabled = total === 0;
     btn.onclick = ()=>{
       SONGS = balancedShuffleAndPick(fullBank, n);
-      // 임시 조치: 첫 문제를 PINNED_FIRST_SONG으로 고정 (같은 곡이 셔플로 이미 뽑혔으면 중복 제거)
-      SONGS = SONGS.filter(s => !(s.videoId === PINNED_FIRST_SONG.videoId && s.source === PINNED_FIRST_SONG.source));
-      SONGS.unshift(PINNED_FIRST_SONG);
-      if (SONGS.length > n) SONGS = SONGS.slice(0, n);
+      // 임시 조치: 첫 문제를 PINNED_FIRST_SONG으로 고정. 단, 멤버별 맞히기에서 다른 멤버를
+      // 골랐을 땐 그 멤버 곡만 나와야 하므로 고정하지 않는다.
+      const skipPin = QUIZ_TYPE==='member-specific' && selectedQuizMemberName !== PINNED_FIRST_SONG.memberName;
+      if (!skipPin){
+        SONGS = SONGS.filter(s => !(s.videoId === PINNED_FIRST_SONG.videoId && s.source === PINNED_FIRST_SONG.source));
+        SONGS.unshift(PINNED_FIRST_SONG);
+        if (SONGS.length > n) SONGS = SONGS.slice(0, n);
+      }
       onConfirm();
     };
     grid.appendChild(btn);
